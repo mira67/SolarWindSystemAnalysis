@@ -1,0 +1,133 @@
+package dataMrg;
+/**
+ * @author zhaoyingying
+ * 
+ * @date:2017-03-09 09:10:10 
+ * 
+ * @fun: get all strings at the same time 
+ * @file format:StringId,combinerboxName,I,PV,T,Fs2m,Ws
+ * stringID format: 1-8199
+ * combinerboxName format Eg. S01-NBA-HL01-I1
+ * I: current
+ * pv: voltage
+ * T: temperature of the combinerbox
+ * Fs2m: solar irradiance(w/m^2)
+ * Ws: wind speed (m/s)
+ * 
+ */
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+
+class maprules1 {
+	String combinerbox;// combinerbox name
+	int branch_no;// string name
+	int StringID; //string ID:1-8199
+
+	public maprules1(String a, int b, int c) {
+		this.combinerbox = a;
+		this.branch_no = b;
+		this.StringID = c;
+	}
+}
+
+public class GetAllStrings {
+
+	static final String timefile = "data/test11am.csv"; //hlx info at the specific time;
+	static final String cuaninfo = "data/cuaninfo.csv";// cuan info
+	static final String sameTimeAllStrings = "data/strings11am.csv";//get all strings arrange at the same time
+	static List<maprules1> mapr = new ArrayList<maprules1>();
+
+	/**
+	 * fun: get the map rule from combinerbox to branch number;
+	 * @throws IOException
+	 */
+	public static void getmaprule() throws IOException {
+		BufferedReader br = new BufferedReader(new FileReader(cuaninfo));
+		String line = br.readLine();//skip the headline
+		
+		line = br.readLine();
+		int num = 0;
+		while (line != null) {
+			String[] elements = line.split(",");
+			maprules1 a = new maprules1(elements[1],
+					Integer.parseInt(elements[2]), num);
+			num++;
+			mapr.add(a);
+			line = br.readLine();
+		}
+		br.close();
+	}
+
+	public static void main(String[] args) throws IOException {
+		final int voltagePos = 19;
+		final int combinerboxPos =20;
+		final int  irradiancePos =21;
+		final int windSpeedPos = 22;
+		// TODO Auto-generated method stub
+		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//
+		System.out.println(df.format(new Date()));
+		getmaprule();
+		BufferedReader br = new BufferedReader(new FileReader(timefile));
+		FileOutputStream out= new FileOutputStream(sameTimeAllStrings);;
+		OutputStreamWriter osw= new OutputStreamWriter(out, "UTF8");
+		BufferedWriter Matrix;
+		
+		out = new FileOutputStream(sameTimeAllStrings);
+		osw = new OutputStreamWriter(out, "UTF8");
+		Matrix = new BufferedWriter(osw);
+	
+		String date = "";
+		double[] row = new double[6];
+        int[] Imap = {1,10,11,12,13,14,15,16,2,3,4,5,6,7,8,9};
+        int[] elementsmap = {3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18};
+		int num = 0;
+		String line = br.readLine();//skip the headline
+		line = br.readLine();
+		
+		//Matrix.write("#StringId,combinerboxName,I,PV,T,Fs2m,Ws");// write the headline
+		//Matrix.write("\n");
+		
+		while (line != null) {
+			String[] elements = line.split(",");
+			num++;
+			line = br.readLine(); //get the context
+				for (int j = 0; j < mapr.size(); j++){//find the specific combinerbox
+					String combinerbox = elements[1]; 
+					if(combinerbox.equals(mapr.get(j).combinerbox)){
+						Matrix.write(String.valueOf(mapr.get(j).StringID+1));//record the string id as the first field
+						Matrix.write(",");
+						for(int k = 0; k < Imap.length; k++){//find the specific string number
+							if(Imap[k]==mapr.get(j).branch_no){
+								String combinerboxName = combinerbox+"-"+"I"+Imap[k];//rename combinerbox name as origiinal name+ branch no
+								Matrix.write(combinerboxName);// record the combinerbox name as the second field
+								Matrix.write(",");
+								Matrix.write(elements[elementsmap[k]]);// record the current for the current string
+							}
+
+						}
+						
+						
+						Matrix.write("," +  elements[voltagePos]+ "," + elements[combinerboxPos]+"," + elements[irradiancePos]+"," + elements[windSpeedPos]);//write voltage, combinerbox temperature, solar irradiance and wind speed
+						Matrix.write("\n");
+					}
+					
+				}						
+			//}	
+		}
+					
+		Matrix.close();
+		osw.close();
+		out.close();
+		System.out.println(df.format(new Date()));
+	
+	}
+}
