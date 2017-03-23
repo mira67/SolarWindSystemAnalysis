@@ -119,6 +119,11 @@ def falseAlarmRemoval(dayId, method, K):
     stringName = ['' for s in range(totalVString)] 
     dutyCycle = np.zeros((totalVString,1))
     strCount = 0
+    
+    print 'Construct Empty Report on day %s' % (dayId)
+    
+    start = time.time()
+    
     if method == 'cluster':
         for rf in rlist:
             # read module    
@@ -132,7 +137,8 @@ def falseAlarmRemoval(dayId, method, K):
                 strCount = strCount + 1
     
     #
-    start = time.time()  
+    print 'Fault Identification on day %s' % (dayId)
+      
     try:
         #clustering, test with kmeans first, then GMM
         clusters = KMeans(n_clusters=K, random_state=0).fit(dutyCycle)
@@ -145,7 +151,7 @@ def falseAlarmRemoval(dayId, method, K):
         diff2 = diff2.reshape((1,K-2))
         peakind = signal.find_peaks_cwt(diff2[0],np.arange(1,totalVString))
         #if works, why this parameter
-        gap = sortedCentroids[peakind[1]+1]#offset by 1
+        gap = sortedCentroids[peakind[0]+2]#offset by 1
         #for all dutyCycle greater than gap, reported as fault
         fault = np.greater(dutyCycle,gap)
         #construct table and report day by day
