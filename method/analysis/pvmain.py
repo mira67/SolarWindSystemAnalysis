@@ -20,7 +20,7 @@ from scipy import signal
 localStage = 0
 globalStage = 1
 #data paths
-outPath = 'E:/myprojects/pv_detection/data/stage1_2/'
+outPath = 'E:/myprojects/pv_detection/data/experiment_results/test_03_22_5min_12_14/'
 reportPath = 'E:/myprojects/pv_detection/data/experiment_results/'
 #column names
 colNames = ['I1','I10','I11','I12','I13','I14','I15','I16','I2','I3','I4','I5','I6','I7','I8','I9'];
@@ -114,12 +114,10 @@ def faultDetection(fullname):
 
 def falseAlarmRemoval(dayId, method, K):
     rlist = glob.glob(outPath+'*.csv') 
-    
     #initialize empty table for daily report 
     dayStrings = pd.DataFrame(index=range(totalVString), columns=['stringName','dt','cluster','fault']) 
     stringName = ['' for s in range(totalVString)] 
     dutyCycle = np.zeros((totalVString,1))
-    cluster = np.zeros((totalVString,1))
     strCount = 0
     if method == 'cluster':
         for rf in rlist:
@@ -132,18 +130,39 @@ def falseAlarmRemoval(dayId, method, K):
                 stringName[strCount] = hlx+'_'+cuan
                 dutyCycle[strCount] = df[cuan]
                 strCount = strCount + 1
-    #clustering, test with kmeans first, then GMM
-    clusters = KMeans(n_clusters=K, random_state=0).fit(dutyCycle)
-    centroids = clusters.cluster_centers_
-    #fault identification - sort centroids                     
-    sortedIdx = np.argsort(centroids,axis=1,kind='mergesort')
-    sortedCentroids = centroids[sortedIdx]
-    #fault identification - find gap
-    diff2 = np.diff(sortedCentroids, n=2)
-    peakind = signal.find_peaks_cwt(diff2)
-    gap = sortedCentroids(peakind)
-    #for all dutyCycle greater than gap, reported as fault
-    fault = np.less(dutyCycle,gap)                                                                                                          
+    
+    #
+    start = time.time()  
+    try:
+        #clustering, test with kmeans first, then GMM
+        clusters = KMeans(n_clusters=K, random_state=0).fit(dutyCycle)
+        centroids = clusters.cluster_centers_
+        #fault identification - sort centroids                     
+        sortedIdx = np.argsort(centroids,axis=0,kind='mergesort')
+        sortedCentroids = centroids[sortedIdx]
+        #fault identification - find gap
+        diff2 = np.diff(sortedCentroids, n=2, axis=0)
+        diff2 = diff2.reshape((1,K-2))
+        peakind = signal.find_peaks_cwt(diff2[0],np.arange(1,totalVString))
+        #if works, why this parameter
+        gap = sortedCentroids[peakind[1]+1]#offset by 1
+        #for all dutyCycle greater than gap, reported as fault
+        fault = np.greater(dutyCycle,gap)
+        #construct table and report day by day
+        dayStrings['stringName'] = stringName
+        dayStrings['dt'] = dutyCycle
+        dayStrings['cluster'] = clusters.labels_
+        dayStrings['fault'] = fault 
+        #write to file report
+        dayStrings.to_csv(reportPath+dayId+'.csv') 
+    #
+    except:
+        print 'error on %s, but pass' % (dayId)
+        
+    end = time.time()
+    runtime = end - start
+    msg = "Single Day False Alarm Removal Took {time} seconds to complete"
+    print(msg.format(time=runtime))                                                                                                       
     return 'ok'
 
 # summarize reulsts, print daily fault strings to file
@@ -153,8 +172,20 @@ if __name__ == '__main__':
     if localStage == 1:
         print 'Running Global Stage...'
         
-        inPath = 'E:/myprojects/pv_detection/data/test/'
+        inPath = 'E:/myprojects/pv_detection/data/filtered/'
         flist = glob.glob(inPath+'*.csv')
+        
+        #profiling 1
+        start = time.time()
+        pool = mp.Pool(4)
+        results = pool.map(faultDetection, flist)
+        
+        end = time.time()
+        runtime = end - start
+        msg = "Multi-Processing Took {time} seconds to complete"
+        print(msg.format(time=runtime))
+   
+    '''
         #profiling 2
         start = time.time()    
         for f in flist:
@@ -164,18 +195,6 @@ if __name__ == '__main__':
         end = time.time()
         runtime = end - start
         msg = "Single Thread Took {time} seconds to complete"
-        print(msg.format(time=runtime))
-    
-        
-    '''
-        #profiling 1
-        start = time.time()
-        pool = mp.Pool(4)
-        results = pool.map(faultDetection, newList)
-        
-        end = time.time()
-        runtime = end - start
-        msg = "Multi-Processing Took {time} seconds to complete"
         print(msg.format(time=runtime))
     '''
         
@@ -192,15 +211,10 @@ if __name__ == '__main__':
         #    newList.append(f)
     '''
     if globalStage == 1:
-        start = time.time()  
         
         print 'Running Global Stage...'
         date = '2016-06-06'
         method = 'cluster'
         falseAlarmRemoval(date, method, 20)
         
-        end = time.time()
-        runtime = end - start
-        msg = "Single Day False Alarm Removal Took {time} seconds to complete"
-        print(msg.format(time=runtime))
         print 'TEST DONE'
