@@ -1,4 +1,3 @@
-from sklearn.metrics import classification_report
 import matplotlib.pylab as plt
 import numpy as np
 
@@ -38,14 +37,6 @@ class ts_classifier(object):
 				plt.legend(['Test Series','Nearest Neighbor in Training Set'])
 				plt.title('Nearest Neighbor in Training Set - Prediction ='+str(closest_seq[-1]))
 				plt.show()
-	    
-	    
-	def performance(self,true_results):
-		'''
-		If the actual test set labels are known, can determine classification
-		accuracy.
-		'''
-		return classification_report(true_results,self.preds)
 	
 	def get_preds(self):
 		return self.preds
