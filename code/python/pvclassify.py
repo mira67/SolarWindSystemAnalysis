@@ -12,8 +12,8 @@ from sklearn.metrics import classification_report
 import time
 
 #global settings
-kfold = 5 # cross validation
-inPath = 'E:/myprojects/pv_detection/code/python/data.csv'
+kfold = 3 # cross validation
+inPath = 'E:/myprojects/pv_detection/code/python/smoothedTimeSeriesADI.csv'
 outPath = 'E:/myprojects/pv_detection/code/python/report.csv'
 w = 4
 
@@ -91,3 +91,4 @@ if __name__ == '__main__':
     runtime = end - start
     msg = "PV Classification Tooks {time} seconds to complete"
     print(msg.format(time=runtime)) 
+    

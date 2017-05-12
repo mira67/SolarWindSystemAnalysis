@@ -22,18 +22,18 @@ globalStage = 1
 
 #data paths
 #input hlx data
-inPath = 'E:/myprojects/pv_detection/data/smoothedData_Jul_Aug/'
+inPath = 'E:/myprojects/pv_detection/data/smoothedData_xinjiang/'
 #output local stage path, change stage1 to dir like /local_03_23_5min_08_17
-outPath = 'E:/myprojects/pv_detection/data/experiment_results/local_04_02_10min_08_17/'
+outPath = 'E:/myprojects/pv_detection/data/experiment_results/xinjiang_local_05_12_10min_02_17/'
 #report path, global path  /global_03_23_5min_08_17
-reportPath = 'E:/myprojects/pv_detection/data/experiment_results/global_04_02_10min_08_17/'
+reportPath = 'E:/myprojects/pv_detection/data/experiment_results/xinjiang_global_05_12_10min_02_17/'
 
 #column names
 colNames = ['I1','I10','I11','I12','I13','I14','I15','I16','I2','I3','I4','I5','I6','I7','I8','I9'];
 
 # generate date list, process by day
-start = datetime.datetime.strptime("2016-07-01", "%Y-%m-%d").date()
-end = datetime.datetime.strptime("2016-09-01", "%Y-%m-%d").date()
+start = datetime.datetime.strptime("2017-02-01", "%Y-%m-%d").date()
+end = datetime.datetime.strptime("2017-02-28", "%Y-%m-%d").date()
 dateList = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
 
 dayList = []
@@ -43,11 +43,11 @@ print dayList
 
 # this is just for one day testing
 dateName = '#data_date'
-timeRg = ['08:00','17:00'];#maybe calculate based on the sunshine value, contextual information
+timeRg = ['00:00','12:00'];#maybe calculate based on the sunshine value, contextual information
 interval = 10;#every n min sampling
 stringNum = 16
 #total number of strings
-totalVString = 553*16
+totalVString = 294*16
     
 #daily clustering results
 numDays = len(dateList)
@@ -188,7 +188,7 @@ if __name__ == '__main__':
             
         #profiling 1
         start = time.time()
-        pool = mp.Pool(4)
+        pool = mp.Pool(3)
         results = pool.map(faultDetection, flist)
         
         end = time.time()
@@ -203,7 +203,7 @@ if __name__ == '__main__':
         
         print 'Running Global Stage...'
         #date = '2016-06-06'#dateList
-        pool = mp.Pool(4)
+        pool = mp.Pool(3)
         results = pool.map(falseAlarmRemoval, dayList)
         
         end = time.time()
