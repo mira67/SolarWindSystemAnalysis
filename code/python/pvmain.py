@@ -12,7 +12,6 @@ import multiprocessing as mp
 import glob
 import os
 import time
-import filecmp
 from sklearn.cluster import KMeans
 from scipy import signal
 
