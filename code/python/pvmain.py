@@ -16,8 +16,8 @@ from sklearn.cluster import KMeans
 from scipy import signal
 
 #running stages
-localStage = 1
-globalStage = 0
+localStage = 0
+globalStage = 1
 
 #data paths
 #input hlx data
