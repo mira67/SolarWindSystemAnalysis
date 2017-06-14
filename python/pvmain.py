@@ -12,28 +12,30 @@ import multiprocessing as mp
 import glob
 import os
 import time
-import filecmp
 from sklearn.cluster import KMeans
 from scipy import signal
 
 #running stages
-localStage = 1
-globalStage = 0
+localStage = 0
+globalStage = 1
 
 #data paths
 #input hlx data
+#inPath = 'E:/myprojects/pv_detection/data/smoothedData_xinjiang/'
 inPath = 'E:/myprojects/pv_detection/data/filtered/'
 #output local stage path, change stage1 to dir like /local_03_23_5min_08_17
-outPath = 'E:/myprojects/pv_detection/data/stage1/'
+outPath = 'E:/myprojects/pv_detection/data/experiment_results/local_06_02_10min_08_17_no_offset/'
+#xinjiang_local_05_12_10min_02_17/'
 #report path, global path  /global_03_23_5min_08_17
-reportPath = 'E:/myprojects/pv_detection/data/stage1_2/'
+reportPath = 'E:/myprojects/pv_detection/data/experiment_results/global_06_02_10min_08_17_no_offset/'
+#xinjiang_global_05_12_10min_02_17/'
 
 #column names
 colNames = ['I1','I10','I11','I12','I13','I14','I15','I16','I2','I3','I4','I5','I6','I7','I8','I9'];
 
 # generate date list, process by day
 start = datetime.datetime.strptime("2016-06-01", "%Y-%m-%d").date()
-end = datetime.datetime.strptime("2016-06-02", "%Y-%m-%d").date()
+end = datetime.datetime.strptime("2016-07-02", "%Y-%m-%d").date()
 dateList = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
 
 dayList = []
@@ -43,11 +45,12 @@ print dayList
 
 # this is just for one day testing
 dateName = '#data_date'
+timeRg_offset = ['04:40','05:00'];
 timeRg = ['08:00','17:00'];#maybe calculate based on the sunshine value, contextual information
 interval = 10;#every n min sampling
 stringNum = 16
 #total number of strings
-totalVString = 553*16
+totalVString = 554*16#294*16
     
 #daily clustering results
 numDays = len(dateList)
@@ -64,9 +67,25 @@ def faultDetection(fullname):
     #day result array
     faultArr = np.zeros((numDays,stringNum),dtype=np.float)
     dayCount = 0
+    
+    #set values of string with offset to zero, to be treated as invalid data below
+    df_offset = df[(df[dateName] > '2016-06-01'+' '+timeRg_offset[0]) & (df[dateName] < '2016-06-01'+' '+timeRg_offset[1])]
+    string_current = df_offset.iloc[:,1:stringNum+1].as_matrix()
+    offset_avg = np.sum(string_current, axis=0)/len(string_current)
+    
+    #handling offset strings
+    for idx, val in enumerate(offset_avg):
+        if val > 0.05: #a small tolerance for offset measurement
+            string_id = colNames[idx]
+            print string_id
+            #set entire string to invalid data '0'
+            df.loc[df[string_id] > 0, string_id] = 0
+        #print(idx, val)
+        
     #downsample data at regular interval
     df = df.iloc[::interval,:]
     for dt in dateList:
+        #grab data between defined date ranges
         dfday = df[(df[dateName] > str(dt)+' '+timeRg[0]) & (df[dateName] < str(dt)+' '+timeRg[1])]  
 
         dayT = dfday.count(axis=1)
@@ -103,9 +122,14 @@ def faultDetection(fullname):
                     offset = np.arange(len(zeroId))
                     pos = zeroId - offset
                     clusters = np.insert(clusters, pos, 0)                       
-                                                    
-                #accumulate for fault string 
-                dayFaultCount = dayFaultCount + clusters
+                
+                #potential bad strings
+                bad_num = np.count_nonzero(clusters)
+                
+                #only when bad strings are the small group, accumulate, 'rare' assumption
+                if bad_num < (len(nonZeroId) - bad_num):                                   
+                    #accumulate for fault string 
+                    dayFaultCount = dayFaultCount + clusters
         except:
             print 'error on %s, but pass' % (dt)
             
@@ -188,12 +212,14 @@ if __name__ == '__main__':
             
         #profiling 1
         start = time.time()
-        pool = mp.Pool(4)
+        pool = mp.Pool(3)
         results = pool.map(faultDetection, flist)
+        #fullname = inPath+'S14-NBB-HL13-14.csv'
+        #faultDetection(fullname);
         
         end = time.time()
         runtime = end - start
-        msg = "Multi-Processing Took {time} seconds to complete"
+        msg = "Local Multi-Processing Took {time} seconds to complete"
         print(msg.format(time=runtime))
    
    
@@ -203,7 +229,7 @@ if __name__ == '__main__':
         
         print 'Running Global Stage...'
         #date = '2016-06-06'#dateList
-        pool = mp.Pool(4)
+        pool = mp.Pool(3)
         results = pool.map(falseAlarmRemoval, dayList)
         
         end = time.time()

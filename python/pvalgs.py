@@ -4,7 +4,7 @@
 """
 import pandas as pd
 import numpy as np
-from sklearn.mixture import GMM
+from sklearn.mixture import GaussianMixture
 from matplotlib import pyplot as plt
 import time
 
@@ -16,7 +16,7 @@ def fdGMM(x,nStr):
     models = [None for i in range(len(N))]
     
     for i in range(len(N)):
-        models[i] = GMM(N[i],covariance_type='full').fit(x)
+        models[i] = GaussianMixture(N[i],covariance_type='full').fit(x)
     
     # compute the BIC
     BIC = [m.bic(x) for m in models]
@@ -24,7 +24,7 @@ def fdGMM(x,nStr):
     # get minimal BIC index as optimal number of clusters
     fK = BIC.index(min(BIC)) + 1
     
-    fmodel = GMM(fK,covariance_type='full').fit(x)
+    fmodel = GaussianMixture(fK,covariance_type='full').fit(x)
     clusters = fmodel.predict(x)
     return clusters,fmodel.means_,fK
     
