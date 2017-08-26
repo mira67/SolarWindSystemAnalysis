@@ -1,0 +1,14 @@
+08-26-2017
+
+Bug1: 
+
+Code: 
+stringCurrent = queryStrData(hlxID, strID, startDT,endDT)
+Features = queryFeaData(FeatureList, startDT,endDT)
+
+If the last query was unbuffered, make sure it finishes before
+InterfaceError. 
+
+Not able to run these two queries sequentially.
+
+Solution:
