@@ -20,8 +20,6 @@ db = pymysql.connect(host='localhost',
                             charset='utf8mb4',
                             cursorclass=pymysql.cursors.DictCursor,local_infile=True)
 
-cursor=db.cursor()
-
 #Parameters configuration
 startDTModel = '2016-01-01'
 endDTModel = '2016-03-31'
@@ -38,18 +36,30 @@ Output: String current
 """
 def queryStrData(hlxID, strID, startDT,endDT):
     
-    sql = """SELECT {} FROM pingyuan.hlx WHERE combinerbox = '{}' 
+    sql1 = """SELECT {} FROM pingyuan.hlx WHERE combinerbox = '{}' 
             AND data_date BETWEEN '{}' AND '{}' AND TIME(data_date) BETWEEN '10:00'AND '16:00';"""
-    sqlSts = sql.format(strID, hlxID, startDT,endDT)
-    print(sqlSts)
+    sqlSts1 = sql1.format(strID, hlxID, startDT,endDT)
+    
+    sql2 = """SELECT FS1,Fs2,Fs1m,Fs2m,Wv,Wd,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}'
+    AND TIME(data_date) BETWEEN '10:00'AND '16:00';"""
+    sqlSts2 = sql2.format(startDT,endDT)
+
     try:
         cursor = db.cursor()
-        cursor.execute(sqlSts)
+        cursor.execute(sqlSts1)
         db.commit()
         
         #collect query data
         strCurrent = pd.DataFrame(cursor.fetchall())
-        print(strCurrent.head())
+        
+        cursor.execute(sqlSts2)
+        db.commit()
+        
+        #collect query data
+        features = pd.DataFrame(cursor.fetchall())
+        
+        print(strCurrent.shape)
+        print(features.shape)
     except:
         # Rollback in case there is any error
         db.rollback()
@@ -58,7 +68,7 @@ def queryStrData(hlxID, strID, startDT,endDT):
     #close connection
     cursor.close()
     db.close()
-    return strCurrent
+    return strCurrent,features
 
 """
 Step 2: Extract weather data from database, table-qxz
@@ -101,11 +111,11 @@ def strPowerModel(Features,stringCurrent):
 #Step 4: Fault detection for individual string
 def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     #Get data
-    stringCurrent = queryStrData(hlxID, strID, startDT,endDT)
-    Features = queryFeaData(FeatureList, startDT,endDT)
+    stringCurrent,Features = queryStrData(hlxID, strID, startDT,endDT)
+    #Features = queryFeaData(FeatureList, startDT,endDT)
     
     #Build Model
-    #lm = strPowerModel(Features, stringCurrent)
+    lm = strPowerModel(Features, stringCurrent)
    
     """using model to check new data for faults
         grab test data from database, using last 10 days in June

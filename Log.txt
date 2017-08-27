@@ -12,3 +12,4 @@ InterfaceError.
 Not able to run these two queries sequentially.
 
 Solution:
+Put string and features query into single function, dig into 'why'
