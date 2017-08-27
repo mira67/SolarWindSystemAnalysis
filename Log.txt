@@ -13,3 +13,19 @@ Not able to run these two queries sequentially.
 
 Solution:
 Put string and features query into single function, dig into 'why'
+
+Bug2:
+
+with mp.Pool(3) as pool:
+        results = pool.map(test, strings)
+
+Multi-processing operation has problem with python 3, had solution but forgot,
+need solve again and record the solution this time. [Canopy's issue?]
+
+Bug3: table not able to join due the lost of connection, need figure out reason
+and fix
+
+To-Do:
+1. join table, to avoid missing data problem, or use hourly data, not min...but
+would like to keep min level data
+2. 

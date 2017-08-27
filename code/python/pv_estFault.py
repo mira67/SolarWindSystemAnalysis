@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 import time
 import multiprocessing as mp
+import matplotlib.pyplot as plt
 
 #Make database connetion
 db = pymysql.connect(host='localhost',
@@ -22,7 +23,7 @@ db = pymysql.connect(host='localhost',
 
 #Parameters configuration
 startDTModel = '2016-01-01'
-endDTModel = '2016-03-31'
+endDTModel = '2016-05-31'
 
 startDTTest = '2016-06-01'
 endDTTest = '2016-06-30'
@@ -35,16 +36,24 @@ Input: String Info: hlxID, strID, Datetime: startDT,endDT
 Output: String current
 """
 def queryStrData(hlxID, strID, startDT,endDT):
-    
-    sql1 = """SELECT {} FROM pingyuan.hlx WHERE combinerbox = '{}' 
-            AND data_date BETWEEN '{}' AND '{}' AND TIME(data_date) BETWEEN '10:00'AND '16:00';"""
+    # AND TIME(data_date) BETWEEN '08:00'AND '17:00'
+    # AND TIME(data_date) BETWEEN '08:00'AND '17:00'
+    sql1 = """SELECT data_date,{} FROM pingyuan.hlx WHERE combinerbox = '{}' 
+            AND data_date BETWEEN '{}' AND '{}';"""
     sqlSts1 = sql1.format(strID, hlxID, startDT,endDT)
     
-    sql2 = """SELECT FS1,Fs2,Fs1m,Fs2m,Wv,Wd,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}'
-    AND TIME(data_date) BETWEEN '10:00'AND '16:00';"""
+    sql2 = """SELECT data_date,FS1,Fs2,Fs1m,Fs2m,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}';"""
     sqlSts2 = sql2.format(startDT,endDT)
+    
+    sql3 = """SELECT data_date,{} FROM pingyuan.hlx WHERE combinerbox = '{}' 
+            AND data_date BETWEEN '{}' AND '{}';"""
+    sqlSts3 = sql3.format(strID, hlxID, startDTTest,endDTTest)
+    
+    sql4 = """SELECT data_date,FS1,Fs2,Fs1m,Fs2m,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}';"""
+    sqlSts4 = sql4.format(startDTTest,endDTTest)
 
     try:
+        '''training data'''
         cursor = db.cursor()
         cursor.execute(sqlSts1)
         db.commit()
@@ -58,8 +67,26 @@ def queryStrData(hlxID, strID, startDT,endDT):
         #collect query data
         features = pd.DataFrame(cursor.fetchall())
         
-        print(strCurrent.shape)
-        print(features.shape)
+        #join table to avoid missing data problem
+        trainData = strCurrent.join(features.set_index('data_date'),on='data_date')
+        
+        '''test data'''
+        cursor = db.cursor()
+        cursor.execute(sqlSts3)
+        db.commit()
+        
+        #collect query data
+        strCurrent = pd.DataFrame(cursor.fetchall())
+        
+        cursor.execute(sqlSts4)
+        db.commit()
+        
+        #collect query data
+        features = pd.DataFrame(cursor.fetchall())
+        
+        #join table to avoid missing data problem
+        testData = strCurrent.join(features.set_index('data_date'),on='data_date')
+        
     except:
         # Rollback in case there is any error
         db.rollback()
@@ -68,38 +95,7 @@ def queryStrData(hlxID, strID, startDT,endDT):
     #close connection
     cursor.close()
     db.close()
-    return strCurrent,features
-
-"""
-Step 2: Extract weather data from database, table-qxz
-Input: Features: FeatureList, Datetime: startDT,endDT
-Output: Features array
-"""
-def queryFeaData(FeatureList, startDT,endDT):
-    sql = """SELECT FS1,Fs2,Fs1m,Fs2m,Wv,Wd,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}'
-    AND TIME(data_date) BETWEEN '10:00'AND '16:00';"""
-    sqlSts = sql.format(startDT,endDT)
-    print(sqlSts)
-    try:
-        cursor = db.cursor()
-        cursor.execute(sqlSts)
-        db.commit()
-        
-        #collect query data
-        features = pd.DataFrame(cursor.fetchall())
-        print(features.head())
-    except:
-        # Rollback in case there is any error
-        db.rollback()
-        print('Not able to query features')
-        
-    #close connection
-    cursor.close()
-    db.close()
-    return features
-
-#queryStrData('S01-NBA-HL0111','I1','2016-01-01','2016-01-02')
-#consider to also write to files for later easier access?
+    return trainData,testData
 
 #Step 3: Build model for individual string
 def strPowerModel(Features,stringCurrent):
@@ -111,11 +107,19 @@ def strPowerModel(Features,stringCurrent):
 #Step 4: Fault detection for individual string
 def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     #Get data
-    stringCurrent,Features = queryStrData(hlxID, strID, startDT,endDT)
+    fullData,testData = queryStrData(hlxID, strID, startDT,endDT)
+    fullData = fullData.dropna(axis=0, how='any')
+    testData = testData.dropna(axis=0, how='any')
     #Features = queryFeaData(FeatureList, startDT,endDT)
     
     #Build Model
-    lm = strPowerModel(Features, stringCurrent)
+    stringCurrent = fullData.iloc[:,0].as_matrix().astype(np.float32)
+    Features = fullData.iloc[:,2:8].as_matrix().astype(np.float32)
+    
+    lm = strPowerModel(Features,stringCurrent)
+    # The coefficients
+    print('Coefficients: \n', lm.coef_)
+    print('Variance score: %.4f' % lm.score(Features,stringCurrent))
    
     """using model to check new data for faults
         grab test data from database, using last 10 days in June
@@ -123,14 +127,33 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     """
     
     #Get test data for this string [2016-06-01, 2016-06-30] data
-    """
-    testX = queryFeaData(FeatureList, startDTTest,endDTTest)
-    testY = queryStrData(hlxID, strID, startDTTest,endDTTest)
+    testX = testData.iloc[:,2:8].as_matrix().astype(np.float32)
+    testY = testData.iloc[:,0].as_matrix().astype(np.float32)
     predY = lm.predict(testX)
     resErr = (testY-predY)/testY*100
-    print(resErr)
+    
+    # Plot outputs
+    f1 = plt.figure(1)
+    plt.plot(testY, label='Actual Power from String')
+    plt.plot(predY, label='Predicted Power from String')
+    
+    plt.xlabel('Time (min)')
+    plt.ylabel('Power')
+    plt.title('Linear Regression')
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
+          fancybox=True, shadow=True, ncol=5)
+
+    f1.show()
+
+    # Plot error
+    f2 = plt.figure(2)
+    plt.plot(resErr)
+    f2.show()
+    
+    # record results for each string: original current, estimated current, and error
+    
     return resErr
-    """
+
     #set resErr > 10 to Fault label in restult file
     
     
