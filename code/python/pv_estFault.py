@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression
 import time
 import multiprocessing as mp
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
 
 #Make database connetion
 db = pymysql.connect(host='localhost',
@@ -22,13 +23,15 @@ db = pymysql.connect(host='localhost',
                             cursorclass=pymysql.cursors.DictCursor,local_infile=True)
 
 #Parameters configuration
-startDTModel = '2016-01-01'
-endDTModel = '2016-05-31'
+startDTModel = '2016-04-01'
+endDTModel = '2016-04-31'
 
 startDTTest = '2016-06-01'
 endDTTest = '2016-06-30'
 
 timeRg = ['10:00','16:00'];#use pandas to get data within this range
+
+resPath = 'E:/myprojects/pv_detection/data/model_fault_0826/'
 
 """
 Step 1: Extract data from database, table-hlx
@@ -110,11 +113,16 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     fullData,testData = queryStrData(hlxID, strID, startDT,endDT)
     fullData = fullData.dropna(axis=0, how='any')
     testData = testData.dropna(axis=0, how='any')
+    
+    print(fullData.shape)
+    
     #Features = queryFeaData(FeatureList, startDT,endDT)
     
     #Build Model
     stringCurrent = fullData.iloc[:,0].as_matrix().astype(np.float32)
     Features = fullData.iloc[:,2:8].as_matrix().astype(np.float32)
+    
+    Features = sm.add_constant(Features)
     
     lm = strPowerModel(Features,stringCurrent)
     # The coefficients
@@ -127,30 +135,40 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     """
     
     #Get test data for this string [2016-06-01, 2016-06-30] data
-    testX = testData.iloc[:,2:8].as_matrix().astype(np.float32)
-    testY = testData.iloc[:,0].as_matrix().astype(np.float32)
+    testX = testData.iloc[:,2:8].as_matrix().astype(np.float64)
+    testX = sm.add_constant(testX)
+    
+    testY = testData.iloc[:,0].as_matrix().astype(np.float64)
     predY = lm.predict(testX)
     resErr = (testY-predY)/testY*100
     
     # Plot outputs
-    f1 = plt.figure(1)
-    plt.plot(testY, label='Actual Power from String')
-    plt.plot(predY, label='Predicted Power from String')
-    
-    plt.xlabel('Time (min)')
-    plt.ylabel('Power')
-    plt.title('Linear Regression')
-    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
-          fancybox=True, shadow=True, ncol=5)
-
-    f1.show()
+#     f1 = plt.figure(1)
+#     #plt.plot(stringCurrent, label='Actual Power from String')
+#     #plt.plot(predY, label='Predicted Power from String')
+#     plt.plot(testY, label='Actual Power from String')
+#     plt.plot(predY, label='Predicted Power from String')
+#     
+#     plt.xlabel('Time (min)')
+#     plt.ylabel('Power')
+#     plt.title('Linear Regression')
+#     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
+#           fancybox=True, shadow=True, ncol=5)
+# 
+#     f1.show()
 
     # Plot error
-    f2 = plt.figure(2)
-    plt.plot(resErr)
-    f2.show()
+    # f2 = plt.figure(2)
+    # plt.plot(resErr)
+    # f2.show()
     
     # record results for each string: original current, estimated current, and error
+    results = np.append(testY,predY)
+    results = np.append(results,resErr)
+    nRes = len(results)
+    nData = len(testY)
+    with open(resPath+hlxID+'_'+strID+'.csv','ab+') as f_handle:
+        np.savetxt(f_handle, testY, delimiter=',',fmt='%s')
     
     return resErr
 

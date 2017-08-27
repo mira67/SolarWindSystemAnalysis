@@ -25,7 +25,16 @@ need solve again and record the solution this time. [Canopy's issue?]
 Bug3: table not able to join due the lost of connection, need figure out reason
 and fix
 
-To-Do:
+To-Do and Problems:
 1. join table, to avoid missing data problem, or use hourly data, not min...but
 would like to keep min level data
-2. 
+2. [Better with smoothing technique, temporal factor, why Jan, Feb has lower estiamtion accuracy]
+3. Not all strings has very high estimation accuracy, why?
+
+For next step:
+run all strings and make summary of the variance results and fault detection results 
+for all strings, the impact from variance coverage to fault detection.
+
+How to make more accurate model?
+
+How to identify normal data for training?

@@ -31,12 +31,12 @@ y_train = df_sm[smLen:7000,1]
 x_test = df_sm[smLen:18000,2:10]
 y_test = df_sm[smLen:18000,1]
 
-x_test = sm.add_constant(x_test)
+#x_test = sm.add_constant(x_test)
 
 X = x_train
 y = y_train
 
-x_train = sm.add_constant(X)
+#x_train = sm.add_constant(X)
 est = sm.OLS(y, x_train)
 est2 = est.fit()
 print(est2.summary())
