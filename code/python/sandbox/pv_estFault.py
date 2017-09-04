@@ -13,15 +13,6 @@ import multiprocessing as mp
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
-#Make database connetion
-db = pymysql.connect(host='localhost',
-                            user='liuqi',
-                            password='1234',
-                            db='pingyuan',
-                            port=3306,
-                            charset='utf8mb4',
-                            cursorclass=pymysql.cursors.DictCursor,local_infile=True)
-
 #Parameters configuration
 startDTModel = '2016-04-01'
 endDTModel = '2016-04-31'
@@ -54,6 +45,15 @@ def queryStrData(hlxID, strID, startDT,endDT):
     
     sql4 = """SELECT data_date,FS1,Fs2,Fs1m,Fs2m,Sd,T0 FROM pingyuan.qxz WHERE data_date BETWEEN '{}' AND '{}';"""
     sqlSts4 = sql4.format(startDTTest,endDTTest)
+    
+    #Make database connetion
+    db = pymysql.connect(host='localhost',
+                                user='liuqi',
+                                password='1234',
+                                db='pingyuan',
+                                port=3306,
+                                charset='utf8mb4',
+                                cursorclass=pymysql.cursors.DictCursor,local_infile=True)
 
     try:
         '''training data'''
@@ -96,7 +96,7 @@ def queryStrData(hlxID, strID, startDT,endDT):
         print('Not able to query string %s' % (strID))
         
     #close connection
-    cursor.close()
+    #cursor.close()
     db.close()
     return trainData,testData
 
@@ -112,65 +112,81 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     #Get data
     fullData,testData = queryStrData(hlxID, strID, startDT,endDT)
     fullData = fullData.dropna(axis=0, how='any')
+    fullData = fullData.drop('data_date',axis=1)
     testData = testData.dropna(axis=0, how='any')
+    testData = testData.drop('data_date',axis=1)
     
-    print(fullData.shape)
+    #initialize varScore
+    varScore = 0
     
-    #Features = queryFeaData(FeatureList, startDT,endDT)
+    try:
     
-    #Build Model
-    stringCurrent = fullData.iloc[:,0].as_matrix().astype(np.float32)
-    Features = fullData.iloc[:,2:8].as_matrix().astype(np.float32)
+        # Smoothing, rolling(center=False,window=60).mean()
+        smLen = 60
+        fullData = pd.rolling_mean(fullData, smLen)
+        testData = pd.rolling_mean(testData, smLen)
+        
+        #Build Model
+        stringCurrent = fullData.iloc[smLen:,0].as_matrix().astype(np.float32)
+        Features = fullData.iloc[smLen:,1:7].as_matrix().astype(np.float32)
+        
+        Features = sm.add_constant(Features)
+        
+        lm = strPowerModel(Features,stringCurrent)
+        # The coefficients
+        print('Coefficients: \n', lm.coef_)
+        print('Variance score: %.4f' % lm.score(Features,stringCurrent))
     
-    Features = sm.add_constant(Features)
+        """using model to check new data for faults
+            grab test data from database, using last 10 days in June
+            Method 1: directly compare difference error > 10%
+        """
+        
+        #Get test data for this string [2016-06-01, 2016-06-30] data
+        testX = testData.iloc[smLen:,1:7].as_matrix().astype(np.float64)
+        testX = sm.add_constant(testX)
+        
+        testY = testData.iloc[smLen:,0].as_matrix().astype(np.float64)
+        predY = lm.predict(testX)
+        resErr = (testY-predY)/testY*100
+        
+        # variance score
+        varScore = lm.score(testX, testY)
     
-    lm = strPowerModel(Features,stringCurrent)
-    # The coefficients
-    print('Coefficients: \n', lm.coef_)
-    print('Variance score: %.4f' % lm.score(Features,stringCurrent))
-   
-    """using model to check new data for faults
-        grab test data from database, using last 10 days in June
-        Method 1: directly compare difference error > 10%
-    """
+        # Plot outputs
+    #     f1 = plt.figure(1)
+    #     #plt.plot(stringCurrent, label='Actual Power from String')
+    #     #plt.plot(predY, label='Predicted Power from String')
+    #     plt.plot(testY, label='Actual Power from String')
+    #     plt.plot(predY, label='Predicted Power from String')
+    #     
+    #     plt.xlabel('Time (min)')
+    #     plt.ylabel('Power')
+    #     plt.title('Linear Regression')
+    #     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
+    #           fancybox=True, shadow=True, ncol=5)
+    # 
+    #     f1.show()
     
-    #Get test data for this string [2016-06-01, 2016-06-30] data
-    testX = testData.iloc[:,2:8].as_matrix().astype(np.float64)
-    testX = sm.add_constant(testX)
+        # Plot error
+        # f2 = plt.figure(2)
+        # plt.plot(resErr)
+        # f2.show()
+        
+        # record results for each string: original current, estimated current, and error
+        print(testY.shape)
+        
+        results = np.append(testY,predY)
+        results = np.append(results,resErr)
+        nRes = len(results)
+        nData = len(testY)
+        with open(resPath+hlxID+'_'+strID+'.csv','wb+') as f_handle:
+            np.savetxt(f_handle, results.reshape((nData,3),order='F'), delimiter=',',fmt='%s')
     
-    testY = testData.iloc[:,0].as_matrix().astype(np.float64)
-    predY = lm.predict(testX)
-    resErr = (testY-predY)/testY*100
+    except:
+        print('Not able to process string %s-%s' % (hlxID,strID))
     
-    # Plot outputs
-#     f1 = plt.figure(1)
-#     #plt.plot(stringCurrent, label='Actual Power from String')
-#     #plt.plot(predY, label='Predicted Power from String')
-#     plt.plot(testY, label='Actual Power from String')
-#     plt.plot(predY, label='Predicted Power from String')
-#     
-#     plt.xlabel('Time (min)')
-#     plt.ylabel('Power')
-#     plt.title('Linear Regression')
-#     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
-#           fancybox=True, shadow=True, ncol=5)
-# 
-#     f1.show()
-
-    # Plot error
-    # f2 = plt.figure(2)
-    # plt.plot(resErr)
-    # f2.show()
-    
-    # record results for each string: original current, estimated current, and error
-    results = np.append(testY,predY)
-    results = np.append(results,resErr)
-    nRes = len(results)
-    nData = len(testY)
-    with open(resPath+hlxID+'_'+strID+'.csv','ab+') as f_handle:
-        np.savetxt(f_handle, testY, delimiter=',',fmt='%s')
-    
-    return resErr
+    return varScore
 
     #set resErr > 10 to Fault label in restult file
     
@@ -189,13 +205,27 @@ def main():
     #strings = map(str, strInfo)#seems only string list works for pool map
     #print(strInfo)
     
-    testData = strInfo[0]
-    hlxID = testData[0]
-    strID = 'I'+str(testData[1])
-    FeatureList = ['FS1','Fs2','Fs1m','Fs2m','Wv','Wd','Sd','T0']
-    strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
+    varScores = []
     
-    #profiling 1
+    #profiling
+    start = time.time()
+    for idx,item in enumerate(strInfo):
+        testData = strInfo[idx]
+        hlxID = testData[0]
+        strID = 'I'+str(testData[1])
+        FeatureList = ['FS1','Fs2','Fs1m','Fs2m','Wv','Wd','Sd','T0']
+        varScore = strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
+        varScores.append(varScore)
+    
+    #Record all var scores
+    with open(resPath+hlxID+'_'+strID+'_varScores.csv','wb+') as f_handle:
+        np.savetxt(f_handle, varScores, delimiter=',',fmt='%s')
+    
+    end = time.time()
+    runtime = end - start
+    msg = "Fault Detection Single-Processing Took {time} seconds to complete"
+    print(msg.format(time=runtime))
+    
     '''
     start = time.time()
     #patternDetection('1191278995')
