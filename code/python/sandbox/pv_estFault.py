@@ -16,18 +16,16 @@ from pvalgs import fdGMM
 from sklearn.mixture import GMM
 from itertools import cycle, islice
 from sklearn.preprocessing import StandardScaler
-from sklearn import cluster, datasets, mixture
-from sklearn.cluster import spectral_clustering
-from mean_shift_n import MeanShift
+from sklearn.cluster import KMeans
 
 #Parameters configuration
-startDTModel = '2016-04-01'
-endDTModel = '2016-04-31'
+startDTModel = '2016-04-30'
+endDTModel = '2016-05-30'
 
 startDTTest = '2016-06-01'
 endDTTest = '2016-06-30'
 
-timeRg = ['10:00','16:00'];#use pandas to get data within this range
+timeRg = ['10:00','14:00'];#use pandas to get data within this range
 
 resPath = 'E:/myprojects/pv_detection/data/model_fault_0912/'
 
@@ -108,61 +106,55 @@ def queryStrData(hlxID, strID, startDT,endDT):
     return trainData,testData
 
 # Step 2: Identify Normal Data Clusters
-def dataPartition(features,currents):
+def dataPartition(currents,features):
     bucketLen = 850 #how to determine the optimal bucketlength
     data_len = len(currents)
     bucket_num = round(data_len/bucketLen)
     
+    print('BucketNumber: %d', bucket_num)
+    
     #Pre-linear regression for computing slopes, rough model with single feature
     slopes = np.zeros((bucket_num,1))
+    
     for i in range(0,bucket_num):
-        x = features[i*bucketLen:(i+1)*bucketLen,0]
+        x = features[i*bucketLen:(i+1)*bucketLen,3]#Fs2m
         y = currents[i*bucketLen:(i+1)*bucketLen]
         x = sm.add_constant(x)
+        
         lm = strPowerModel(x,y)
-        slopes[i] = lm.intercept_
-    
-    print(slopes)
-    print('DONE')
+        
+        slopes[i] = lm.coef_[1]#extract slopes
     
     #remove outliers and make slopes into clusters
     N = 2 #either normal or not 
-    clusters,centroids,ck = fdGMM(slopes,N)
+    
+    km = KMeans(n_clusters=N, random_state=0).fit(slopes)
+    
+    clusters,centroids = km.labels_, km.cluster_centers_
+    
+    print('Clusters: ',clusters, centroids)
     
     #pick higher mean clusters and obtain bucket IDX
-    norm_idx = []
-    norm_bucketLen = len(norm_idx)
+    maxId = np.argmax(centroids)    
+    norm_idx = np.where(clusters==maxId)
+    norm_idx = norm_idx[0]#get out of tuple
+    norm_bucketLen = norm_idx.size
+    print('norm_idx: ',norm_idx,norm_bucketLen)
+    
     #construc normal data for modeling
     ndata_idx = []
     for i in range(0,norm_bucketLen):
         k = norm_idx[i]
-        rng = np.linspace(k*bucketLen,(k+1)*bucketLen,bucketLen, endpoint=False)
-        ndata_idx.append(rng)
+        rng = np.linspace(k*bucketLen,(k+1)*bucketLen,bucketLen, endpoint=False, dtype=np.int16)
+        ndata_idx.extend(rng.tolist())
+        
+    #partitioned normal data 
     x = features[ndata_idx,:]
     y = currents[ndata_idx]
     
+    print('Data Partition - DONE')
     return x,y
-    
-        
-    '''    
-    #visualize cluster results
-    y_pred = clusters
-    colors = np.array(list(islice(cycle(['#ff7f00', '#4daf4a',
-                                             '#f781bf', '#a65628', '#984ea3',
-                                             '#999999', '#e41a1c', '#dede00']),int(max(y_pred) + 1))))
-    
-    plt.scatter(X[:, 1], X[:, 0], s=10, color=colors[y_pred])
 
-    plt.xlim(-2.5, 2.5)
-    plt.ylim(-2.5, 2.5)
-    plt.text(.99, .01, ('%.2fs' % (t1 - t0)).lstrip('0'),
-                transform=plt.gca().transAxes, size=15,
-                horizontalalignment='right')
-    
-    #plt.plot(clusters)
-    plt.show()
-    #partitioned data with normal or abnormal labels
-    '''
 
 #Step 3: Build model for individual string
 def strPowerModel(Features,stringCurrent):
@@ -200,6 +192,7 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         #Normal data modeling
         norm_Features = sm.add_constant(norm_Features)
         lm = strPowerModel(norm_Features,norm_Current)
+        
         # The coefficients
         print('Coefficients: \n', lm.coef_)
         print('Variance score: %.4f' % lm.score(norm_Features,norm_Current))
@@ -249,7 +242,8 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         with open(resPath+hlxID+'_'+strID+'.csv','wb+') as f_handle:
             np.savetxt(f_handle, results.reshape((nData,3),order='F'), delimiter=',',fmt='%s')
     
-    except:
+    except Exception as e: 
+        print(e)
         print('Not able to process string %s-%s' % (hlxID,strID))
     
     return varScore
