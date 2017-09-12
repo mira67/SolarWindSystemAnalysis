@@ -12,6 +12,13 @@ import time
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
+from pvalgs import fdGMM
+from sklearn.mixture import GMM
+from itertools import cycle, islice
+from sklearn.preprocessing import StandardScaler
+from sklearn import cluster, datasets, mixture
+from sklearn.cluster import spectral_clustering
+from mean_shift_n import MeanShift
 
 #Parameters configuration
 startDTModel = '2016-04-01'
@@ -22,7 +29,7 @@ endDTTest = '2016-06-30'
 
 timeRg = ['10:00','16:00'];#use pandas to get data within this range
 
-resPath = 'E:/myprojects/pv_detection/data/model_fault_0826/'
+resPath = 'E:/myprojects/pv_detection/data/model_fault_0912/'
 
 """
 Step 1: Extract data from database, table-hlx
@@ -100,6 +107,63 @@ def queryStrData(hlxID, strID, startDT,endDT):
     db.close()
     return trainData,testData
 
+# Step 2: Identify Normal Data Clusters
+def dataPartition(features,currents):
+    bucketLen = 850 #how to determine the optimal bucketlength
+    data_len = len(currents)
+    bucket_num = round(data_len/bucketLen)
+    
+    #Pre-linear regression for computing slopes, rough model with single feature
+    slopes = np.zeros((bucket_num,1))
+    for i in range(0,bucket_num):
+        x = features[i*bucketLen:(i+1)*bucketLen,0]
+        y = currents[i*bucketLen:(i+1)*bucketLen]
+        x = sm.add_constant(x)
+        lm = strPowerModel(x,y)
+        slopes[i] = lm.intercept_
+    
+    print(slopes)
+    print('DONE')
+    
+    #remove outliers and make slopes into clusters
+    N = 2 #either normal or not 
+    clusters,centroids,ck = fdGMM(slopes,N)
+    
+    #pick higher mean clusters and obtain bucket IDX
+    norm_idx = []
+    norm_bucketLen = len(norm_idx)
+    #construc normal data for modeling
+    ndata_idx = []
+    for i in range(0,norm_bucketLen):
+        k = norm_idx[i]
+        rng = np.linspace(k*bucketLen,(k+1)*bucketLen,bucketLen, endpoint=False)
+        ndata_idx.append(rng)
+    x = features[ndata_idx,:]
+    y = currents[ndata_idx]
+    
+    return x,y
+    
+        
+    '''    
+    #visualize cluster results
+    y_pred = clusters
+    colors = np.array(list(islice(cycle(['#ff7f00', '#4daf4a',
+                                             '#f781bf', '#a65628', '#984ea3',
+                                             '#999999', '#e41a1c', '#dede00']),int(max(y_pred) + 1))))
+    
+    plt.scatter(X[:, 1], X[:, 0], s=10, color=colors[y_pred])
+
+    plt.xlim(-2.5, 2.5)
+    plt.ylim(-2.5, 2.5)
+    plt.text(.99, .01, ('%.2fs' % (t1 - t0)).lstrip('0'),
+                transform=plt.gca().transAxes, size=15,
+                horizontalalignment='right')
+    
+    #plt.plot(clusters)
+    plt.show()
+    #partitioned data with normal or abnormal labels
+    '''
+
 #Step 3: Build model for individual string
 def strPowerModel(Features,stringCurrent):
     #Build libear model
@@ -130,12 +194,15 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         stringCurrent = fullData.iloc[smLen:,0].as_matrix().astype(np.float32)
         Features = fullData.iloc[smLen:,1:7].as_matrix().astype(np.float32)
         
-        Features = sm.add_constant(Features)
+        #Data partition, seperate normal and abnormal data
+        norm_Features,norm_Current = dataPartition(stringCurrent,Features)
         
-        lm = strPowerModel(Features,stringCurrent)
+        #Normal data modeling
+        norm_Features = sm.add_constant(norm_Features)
+        lm = strPowerModel(norm_Features,norm_Current)
         # The coefficients
         print('Coefficients: \n', lm.coef_)
-        print('Variance score: %.4f' % lm.score(Features,stringCurrent))
+        print('Variance score: %.4f' % lm.score(norm_Features,norm_Current))
     
         """using model to check new data for faults
             grab test data from database, using last 10 days in June
@@ -174,7 +241,6 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         # f2.show()
         
         # record results for each string: original current, estimated current, and error
-        print(testY.shape)
         
         results = np.append(testY,predY)
         results = np.append(results,resErr)
@@ -195,13 +261,10 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
 def rankFaultString():
     pass
     
-def test(lists):
-    print(lists)
-    
 #Main
 def main():
-    dataPath = 'E:/myprojects/pv_detection/code/code/python/testData.xlsx'
-    strInfo = pd.read_excel(dataPath).values.tolist(); 
+    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/testData.xlsx'
+    strInfo = pd.read_excel(dataPath).values.tolist()
     #strings = map(str, strInfo)#seems only string list works for pool map
     #print(strInfo)
     
@@ -236,7 +299,26 @@ def main():
     msg = "Fault Detection Multi-Processing Took {time} seconds to complete"
     print(msg.format(time=runtime))
     '''
-    
+
+# data partition test
+def main_1():
+    # test data 
+    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/qxz_s18_02_min_labeled.csv'
+    df = pd.read_csv(dataPath)
+    df = df[(df['FS1'] > 900)]
+    X = df.iloc[:,3:5].as_matrix()
+
+    '''
+    # Anisotropicly distributed data
+    random_state = 170
+    n_samples = 1500
+    X, y = datasets.make_blobs(n_samples=n_samples, random_state=random_state)
+    transformation = [[0.6, -0.6], [-0.4, 0.8]]
+    X_aniso = np.dot(X, transformation)
+    aniso = (X_aniso, y)
+    '''
+
+    dataPartition(X)  
 
 if __name__ == "__main__":
     main()

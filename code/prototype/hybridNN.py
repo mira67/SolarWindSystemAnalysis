@@ -11,6 +11,10 @@ import pandas as pd
 import numpy as np
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+import scipy.stats as stats
+import matplotlib.mlab as mlab
+from sklearn import preprocessing
+
 plt.style.use('fivethirtyeight')
 
 inpath = "E:/myprojects/pv_detection/code/code/prototype/SN_y_tot_V2.0.csv"
@@ -85,86 +89,142 @@ def arimaSelection(train_data,test_data):
     # optimal parameters fitting
     # ARIMA(9, 1, 0)x(9, 1, 1, 11)11 - AIC:1100.520795191043
     mod = sm.tsa.statespace.SARIMAX(y,
-                                order=(9, 1, 0),
-                                seasonal_order=(9, 1, 1, seaPed),
+                                order=(2, 0, 0),
+                                seasonal_order=(2, 0, 0, seaPed),
                                 enforce_stationarity=False,
                                 enforce_invertibility=False)
 
-    results = mod.fit()
-    print(results.summary().tables[1])
-    #f1 = plt.figure(1)
-    #results.plot_diagnostics(figsize=(15, 12))
-    #f1.show()
-    
+    arimaModel = mod.fit()
+    #print(results.summary().tables[1])
+    '''
+    f1 = plt.figure(1)
+    results.plot_diagnostics(figsize=(15, 12))
+    plt.show()
+    '''
     
     # Prediction test, how to use prediction
-    pred = results.get_prediction(start = 238, end = 317,dynamic=False)
+    pred = arimaModel.get_prediction(start = 1, end = 239,dynamic=False)
     pred_ci = pred.conf_int()
     
+    # accuracy validation
+    y_predicted = pred.predicted_mean
+    y_truth = train_data.as_matrix()#test_data.as_matrix()
+    
+    '''
     f2 = plt.figure(2)
-    plt.plot(test_data,label='observed',color='red')
-    plt.plot(pred.predicted_mean, label='One-step ahead Forecast', alpha=.7,color='blue')
+    plt.plot(y_truth,label='observed',color='red')
+    plt.plot(y_predicted, label='One-step ahead Forecast', alpha=.7,color='blue')
 
     plt.legend()
     f2.show()
-    
-    # accuracy validation
-    y_forecasted = pred.predicted_mean
-    y_truth = test_data
+    '''
     
     # Compute the mean square error
-    mse = ((y_forecasted - y_truth) ** 2).mean()
-    print('The Mean Squared Error of our forecasts is {}'.format(round(mse, 2)))
+    mse = ((y_predicted[4:] - y_truth[4:]) ** 2).mean()
+    print('ARIMA MSE of our forecasts is {}'.format(round(mse, 2)))
     
     # arimaModel
-    arimaModel = 0
-    return arimaModel
+    remainder = y_truth - y_predicted
+    
+    return arimaModel,y_predicted,y_truth,remainder
 
 # Train NN, residuals from ARIMA as input
-def nnBuild(train_res,test_res):
+def nnBuild(train_res):
     # create model
     model = Sequential()
-    model.add(Dense(4, input_dim=4, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(4, input_dim=5, activation='sigmoid'))
+    model.add(Dense(4, activation='sigmoid'))
+    model.add(Dense(1, activation='linear'))
     # Compile model
     model.compile(loss='mean_squared_error', optimizer='sgd', metrics=['mae', 'acc'])
     # Fit model
     # Fit the model, need adjust the parameters
     train_res_X = train_res[:,0:4]
+    
+    #get train_res_X standarized
+    train_res_X = preprocessing.scale(train_res_X)
+    train_res_X = sm.add_constant(train_res_X)
+    print(train_res_X)
+    
     train_res_Y = train_res[:,4]
-    model.fit(train_res_X, train_res_Y, epochs=150, batch_size=10)
-    return model
+    model.fit(train_res_X, train_res_Y, epochs=1000, batch_size=10)
+    scores = model.evaluate(train_res_X, train_res_Y)
+    print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+    # calculate predictions
+    predictions = model.predict(train_res_X)
+    return model,predictions
 
 def buildResTrain(remainder, n_hist):#n_hist, need test this function
     lenRes = len(remainder)
     endStart = lenRes - n_hist
-    res_train = np.zeros(endStart,n_hist+1)
-    
+    res_train = np.zeros((endStart,n_hist+1))
+    count = 0
     for s in range(0,endStart):
-        res_train[s,:] = remainder[s:n_hist]
+        res_train[s,:] = remainder[s:n_hist+1+count]
+        count = count + 1
     return res_train
 
 def hybridModel(train_data,test_data):
     #Method 1: ARIMA + NN, ARIMA(p, d, q), seasonal, trend, noise
-    #ARIMA model selection
-    arimaModel, remainder = arimaSelection(train_data,test_data)
-    # construct input for neural network from remainder
-    res_train = buildResTrain(remainder)
-    #Neural network training for residuals
-    nnModel = nnBuild(res_train)
     
-    return arimaModel,nnModel
+    
+    #ARIMA model selection
+    #arimaModel, arimaPred, y_truth, remainder = arimaSelection(train_data,test_data)
+    # construct input for neural network from remainder
+    #res_train = buildResTrain(remainder,4)
+    #Neural network training for residuals
+    #nnModel,nnPred = nnBuild(res_train)
+    
+    #arPred = arimaPred[4:]
+    
+    #hybridPred = arPred.reshape(-1) + nnPred.reshape(-1)
+    
+    
+    # solely using NN
+    data_train = buildResTrain(train_data.as_matrix(),4)
+
+    nnModel, nnPred2 = nnBuild(data_train)
+    
+    
+    #normality test
+    #print(stats.normaltest(remainder))
+    
+    #hybridRemainder = y_truth[4:]-hybridPred
+    #print(stats.normaltest(hybridRemainder))
+    
+    # the histogram of the data
+    #n, bins, patches = plt.hist(hybridRemainder, 50, normed=1, facecolor='green', alpha=0.45)
+    #n, bins, patches = plt.hist(remainder, 50, normed=1, facecolor='red', alpha=0.75)
+    #plt.show()
+    
+    
+    f2 = plt.figure(2)
+    plt.plot(train_data.as_matrix()[4:],label='observed',color='red')
+    #plt.plot(hybridPred, label='One-step ahead Forecast - Hybrid', alpha=.7,color='blue')
+    plt.plot(nnPred2, label='One-step ahead Forecast - NN', alpha=.7,color='green')
+    plt.legend()
+    f2.show()
+    
+    
+    
+    # Compute the mean square error
+    #mse = ((hybridPred - train_data[4:]) ** 2).mean()
+    #print('HYBRID MSE of our forecasts is {}'.format(round(mse, 2)))
+    
+    mse = ((nnPred2.reshape(-1) - train_data[4:]) ** 2).mean()
+    print('NN Only MSE of our forecasts is {}'.format(round(mse, 2)))
+    
+    return nnModel
     
 def modelCompare(train_data,test_data):
     #Hybrid NN accuracy and NN convergence 
-    arimaModel,nnModel = hybridModel(train_data,test_data)
+    nnModel = hybridModel(train_data,test_data)
     # Apply test data to models and calculate MSE for pure ARIMA and Hybrid
     
     #Pure ARIMA accuracy
     
     #Pure NN accuracy and convergence
     
-    pass
     return
 
 def main():
