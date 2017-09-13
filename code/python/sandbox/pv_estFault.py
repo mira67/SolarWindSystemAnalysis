@@ -156,7 +156,7 @@ def dataPartition(currents,features):
     y = currents[ndata_idx]
     
     print('Data Partition - DONE')
-    return x,y
+    return x,y, centroids[maxId]
 
 
 #Step 3: Build model for individual string
@@ -192,7 +192,7 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         print('Shapes: ', stringCurrent.shape, Features.shape)
         
         #Data partition, seperate normal and abnormal data
-        norm_Features,norm_Current = dataPartition(stringCurrent,Features)
+        norm_Features,norm_Current,slopeAvg = dataPartition(stringCurrent,Features)
         
         #Normal data modeling
         norm_Features = sm.add_constant(norm_Features)
@@ -216,7 +216,13 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         
         testY = testData.iloc[smLen:,0].as_matrix().astype(np.float64)
         predY = lm.predict(testX)
-        resErr = (testY-predY)/testY*100
+        #filter where current is above 3A
+        testY_idx = np.where(testY>3)
+        #print(testY_idx)
+        resErr = (testY[testY_idx]-predY[testY_idx])/predY[testY_idx]*100
+        
+        #print(testY_idx[0].size)
+        resErrMean = np.sum(resErr)/testY_idx[0].size
     
         # Plot outputs
     #     f1 = plt.figure(1)
@@ -241,17 +247,17 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         # record results for each string: original current, estimated current, and error
         
         results = np.append(testY,predY)
-        results = np.append(results,resErr)
+        #results = np.append(results,resErr)
         nRes = len(results)
         nData = len(testY)
         with open(resPath+hlxID+'_'+strID+'.csv','wb+') as f_handle:
-            np.savetxt(f_handle, results.reshape((nData,3),order='F'), delimiter=',',fmt='%s')
+            np.savetxt(f_handle, results.reshape((nData,2),order='F'), delimiter=',',fmt='%s')
     
     except Exception as e: 
         print(e)
         print('Not able to process string %s-%s' % (hlxID,strID))
     
-    return varScore
+    return varScore,resErrMean,slopeAvg
 
     #set resErr > 10 to Fault label in restult file
     
@@ -268,6 +274,8 @@ def main():
     #print(strInfo)
     
     varScores = []
+    resScores = []
+    avgSlopes = []
     
     #for quick test
     #strInfo = strInfo[0:1]
@@ -279,12 +287,21 @@ def main():
         hlxID = testData[0]
         strID = 'I'+str(testData[1])
         FeatureList = ['FS1','Fs2','Fs1m','Fs2m','Wv','Wd','Sd','T0']
-        varScore = strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
+        varScore,resMean,slopeAvg = strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
         varScores.append(varScore)
+        resScores.append(resMean)
+        avgSlopes.append(slopeAvg)
+    print(resScores)
     
     #Record all var scores
     with open(resPath+hlxID+'_'+strID+'_varScores.csv','wb+') as f_handle:
         np.savetxt(f_handle, varScores, delimiter=',',fmt='%s')
+    
+    with open(resPath+hlxID+'_'+strID+'_faultScore.csv','wb+') as f_handle:
+        np.savetxt(f_handle, resScores, delimiter=',',fmt='%s')
+        
+    with open(resPath+hlxID+'_'+strID+'_slopeNormalAvg.csv','wb+') as f_handle:
+        np.savetxt(f_handle, avgSlopes, delimiter=',',fmt='%s')
     
     end = time.time()
     runtime = end - start
