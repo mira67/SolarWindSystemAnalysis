@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 import time
+import math
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
@@ -108,10 +109,10 @@ def queryStrData(hlxID, strID, startDT,endDT):
 # Step 2: Identify Normal Data Clusters
 def dataPartition(currents,features):
     bucketLen = 850 #how to determine the optimal bucketlength
-    data_len = len(currents)
-    bucket_num = round(data_len/bucketLen)
+    data_len = currents.size
+    bucket_num = math.floor(data_len/bucketLen)
     
-    print('BucketNumber: %d', bucket_num)
+    print('BucketNumber: ', bucket_num, data_len)
     
     #Pre-linear regression for computing slopes, rough model with single feature
     slopes = np.zeros((bucket_num,1))
@@ -149,6 +150,8 @@ def dataPartition(currents,features):
         ndata_idx.extend(rng.tolist())
         
     #partitioned normal data 
+    #print('ndata_idx: ',ndata_idx)
+    print('features: ', features.shape)
     x = features[ndata_idx,:]
     y = currents[ndata_idx]
     
@@ -186,6 +189,8 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         stringCurrent = fullData.iloc[smLen:,0].as_matrix().astype(np.float32)
         Features = fullData.iloc[smLen:,1:7].as_matrix().astype(np.float32)
         
+        print('Shapes: ', stringCurrent.shape, Features.shape)
+        
         #Data partition, seperate normal and abnormal data
         norm_Features,norm_Current = dataPartition(stringCurrent,Features)
         
@@ -196,6 +201,9 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         # The coefficients
         print('Coefficients: \n', lm.coef_)
         print('Variance score: %.4f' % lm.score(norm_Features,norm_Current))
+        
+        # variance score
+        varScore = lm.score(norm_Features,norm_Current)
     
         """using model to check new data for faults
             grab test data from database, using last 10 days in June
@@ -209,9 +217,6 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         testY = testData.iloc[smLen:,0].as_matrix().astype(np.float64)
         predY = lm.predict(testX)
         resErr = (testY-predY)/testY*100
-        
-        # variance score
-        varScore = lm.score(testX, testY)
     
         # Plot outputs
     #     f1 = plt.figure(1)
@@ -257,12 +262,15 @@ def rankFaultString():
     
 #Main
 def main():
-    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/testData.xlsx'
+    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/testData_full.xlsx'
     strInfo = pd.read_excel(dataPath).values.tolist()
     #strings = map(str, strInfo)#seems only string list works for pool map
     #print(strInfo)
     
     varScores = []
+    
+    #for quick test
+    #strInfo = strInfo[0:1]
     
     #profiling
     start = time.time()
@@ -292,31 +300,10 @@ def main():
     runtime = end - start
     msg = "Fault Detection Multi-Processing Took {time} seconds to complete"
     print(msg.format(time=runtime))
-    '''
-
-# data partition test
-def main_1():
-    # test data 
-    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/qxz_s18_02_min_labeled.csv'
-    df = pd.read_csv(dataPath)
-    df = df[(df['FS1'] > 900)]
-    X = df.iloc[:,3:5].as_matrix()
-
-    '''
-    # Anisotropicly distributed data
-    random_state = 170
-    n_samples = 1500
-    X, y = datasets.make_blobs(n_samples=n_samples, random_state=random_state)
-    transformation = [[0.6, -0.6], [-0.4, 0.8]]
-    X_aniso = np.dot(X, transformation)
-    aniso = (X_aniso, y)
-    '''
-
-    dataPartition(X)  
+    ''' 
 
 if __name__ == "__main__":
     main()
 
 #Alert! Thinking programming in multi-processing ways and easier to configure with
 #new alsogithms and data pre-processing methods
-
