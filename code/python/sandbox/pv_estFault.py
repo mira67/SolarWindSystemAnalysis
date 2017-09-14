@@ -20,7 +20,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
 #Parameters configuration
-startDTModel = '2016-04-30'
+startDTModel = '2016-04-15'
 endDTModel = '2016-05-30'
 
 startDTTest = '2016-06-01'
@@ -226,18 +226,17 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     
         # Plot outputs
     #     f1 = plt.figure(1)
-    #     #plt.plot(stringCurrent, label='Actual Power from String')
+    #     #plt.plot(testY, label='Actual Power from String')
     #     #plt.plot(predY, label='Predicted Power from String')
-    #     plt.plot(testY, label='Actual Power from String')
-    #     plt.plot(predY, label='Predicted Power from String')
-    #     
+    #     plt.plot(testData.iloc[smLen:,1].as_matrix().astype(np.float64), label='qxz')
+    #     plt.plot(testData.iloc[smLen:,4].as_matrix().astype(np.float64), label='qxz')
     #     plt.xlabel('Time (min)')
     #     plt.ylabel('Power')
     #     plt.title('Linear Regression')
     #     plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.07),
     #           fancybox=True, shadow=True, ncol=5)
     # 
-    #     f1.show()
+    #     plt.show()
     
         # Plot error
         # f2 = plt.figure(2)
