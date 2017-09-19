@@ -19,6 +19,7 @@ from keras import backend as K
 import matplotlib.pyplot as plt
 
 from keras.utils import plot_model
+from sklearn.preprocessing import MinMaxScaler
 
 # Model Path
 modelFile = 'E:/myprojects/pv_detection/data/model_fault_0912/aeModel.h5'
@@ -31,7 +32,7 @@ step_size = 60
 test_ratio = 0.2
 smLen = 60
 
-EPC = 10# number of epochs
+EPC = 2000# number of epochs
 
 # Parameters configuration
 startDT = '2016-04-15'
@@ -102,6 +103,9 @@ def dataPrepare(data):
     data = data.iloc[smLen:,:].as_matrix().astype(np.float32)
     
     data = preprocessing.scale(data)
+    #scaler = MinMaxScaler()
+    #scaler.fit(data)
+    #data = scaler.transform(data)
     
     window_start = 0 
     for window_id in range(0, window_num):# every minite as a step
@@ -141,7 +145,7 @@ def trainModel(x_train,x_test):
     
     autoencoder = Model(input_img, decoded)
     #autoencoder.compile(optimizer='adadelta', loss='binary_crossentropy')
-    autoencoder.compile(optimizer='Adam', loss='mean_absolute_error')
+    autoencoder.compile(optimizer='sgd', loss='mean_squared_error')
     
     # visualize model architecture
     #plot_model(autoencoder, to_file=modelArc)
@@ -149,7 +153,7 @@ def trainModel(x_train,x_test):
     
     autoencoder.fit(x_train, x_train,
                     epochs=EPC,
-                    batch_size=10,
+                    batch_size=5,
                     shuffle=True,
                     validation_data=(x_test, x_test))
     
@@ -175,7 +179,7 @@ def main():
         data = queryStrData(hlxID, strID, startDT,endDT)
         data = data.dropna(axis=0, how='any')
         data = data.drop('data_date',axis=1)
-        data = pd.rolling_mean(data, smLen)
+        #data = pd.rolling_mean(data, smLen)
         
         print(data.head())
         
@@ -189,16 +193,23 @@ def main():
         plt.figure(figsize=(20, 4))
         for i in range(n):
             # display original
-            ax = plt.subplot(2, n, i+1)
+            plt.figure(1)
+            plt.subplot(2, n, i+1)
             test_ts = test_x[i].reshape(720, 2)
             plt.scatter(test_ts[:,1],test_ts[:,0])
         
             # display reconstruction
-            ax = plt.subplot(2, n, i + n+1)
+            plt.subplot(2, n, i + n+1)
             res_ts = decoded_imgs[i].reshape(720, 2)
             plt.scatter(res_ts[:,1],res_ts[:,0])
             
-            ax2 = plt.figure(2)
+            plt.figure(2)
+            plt.subplot(2, n, i+1)
+            plt.plot(test_ts[:,0])
+        
+            # display reconstruction
+            plt.subplot(2, n, i + n+1)
+            plt.plot(res_ts[:,0])
 
             plt.show()
     
