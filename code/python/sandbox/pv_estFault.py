@@ -165,6 +165,13 @@ def strPowerModel(Features,stringCurrent):
     lm = LinearRegression()
     lm.fit(Features,stringCurrent)
     return lm
+
+#Step 3: Build model with neural network    
+def strNNModel(Features,stringCurrent):
+    #Build libear model
+    lm = LinearRegression()
+    lm.fit(Features,stringCurrent)
+    return lm
     
 #Step 4: Fault detection for individual string
 def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
