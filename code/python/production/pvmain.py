@@ -14,10 +14,11 @@ import os
 import time
 from sklearn.cluster import KMeans
 from scipy import signal
+import math
 
 #running stages
-localStage = 0
-globalStage = 1
+localStage = 1
+globalStage = 0
 
 #data paths
 #input hlx data
@@ -30,18 +31,20 @@ outPath = 'E:/myprojects/pv_detection/data/experiment_results/local_06_02_10min_
 reportPath = 'E:/myprojects/pv_detection/data/experiment_results/global_06_02_10min_08_17_no_offset/'
 #xinjiang_global_05_12_10min_02_17/'
 
+ckFile = 'E:/myprojects/pv_detection/data/experiment_results/ck.csv'
+
 #column names
 colNames = ['I1','I10','I11','I12','I13','I14','I15','I16','I2','I3','I4','I5','I6','I7','I8','I9'];
 
 # generate date list, process by day
-start = datetime.datetime.strptime("2016-06-01", "%Y-%m-%d").date()
+start = datetime.datetime.strptime("2016-07-01", "%Y-%m-%d").date()
 end = datetime.datetime.strptime("2016-07-02", "%Y-%m-%d").date()
 dateList = [start + datetime.timedelta(days=x) for x in range(0, (end-start).days)]
 
 dayList = []
 for day in dateList:
     dayList.append(str(day))
-print dayList
+print(dayList)
 
 # this is just for one day testing
 dateName = '#data_date'
@@ -60,7 +63,7 @@ localList = glob.glob(outPath+'*.csv')
 
 def faultDetection(fullname):
     # read module    
-    print fullname
+    print(fullname)
     
     df = pd.read_csv(fullname)
     
@@ -77,13 +80,16 @@ def faultDetection(fullname):
     for idx, val in enumerate(offset_avg):
         if val > 0.05: #a small tolerance for offset measurement
             string_id = colNames[idx]
-            print string_id
             #set entire string to invalid data '0'
             df.loc[df[string_id] > 0, string_id] = 0
         #print(idx, val)
         
     #downsample data at regular interval
     df = df.iloc[::interval,:]
+    
+    # record all ck values from all combiner boxes
+    ckall = -1
+    
     for dt in dateList:
         #grab data between defined date ranges
         dfday = df[(df[dateName] > str(dt)+' '+timeRg[0]) & (df[dateName] < str(dt)+' '+timeRg[1])]  
@@ -103,12 +109,13 @@ def faultDetection(fullname):
                 #dealing with missing data
                 zeroId = np.where(x == 0)[0]
                 nonZeroId = np.nonzero(x)[0]
-                kLen = len(nonZeroId)/2#reduce cluster numbers
+                kLen = math.floor(len(nonZeroId)/2)#reduce cluster numbers
                 
                 #need test this part
                 if kLen > 0:#if all strings are zero
                     #stringNum shall equal non-zeros members
-                    clusters,centroids,ck = fdGMM(x[nonZeroId],kLen)                         
+                    clusters,centroids,ck = fdGMM(x[nonZeroId],kLen)   
+                    ckall = ck                                                                  
                     #set cluster with largest mean to 0, set others to 1
                     maxId = np.argmax(centroids)
                     clusters[clusters==maxId] = -1
@@ -130,13 +137,14 @@ def faultDetection(fullname):
                 if bad_num < (len(nonZeroId) - bad_num):                                   
                     #accumulate for fault string 
                     dayFaultCount = dayFaultCount + clusters
-        except:
-            print 'error on %s, but pass' % (dt)
+        except Exception as e: 
+            print(e)
+            print('error on %s, but pass' % (dt))
             
         dayFaultCount = dayFaultCount/lenT    
         faultArr[dayCount,:] = dayFaultCount
         dayCount = dayCount + 1
-    
+    '''
     # record to file: date + strings fault alarms
     datesArr = np.asarray(dateList)
     dayResults = pd.DataFrame(faultArr, columns=colNames)
@@ -145,8 +153,8 @@ def faultDetection(fullname):
     #record local context detection results
     hlx = os.path.basename(fullname)
     dayResults.to_csv(outPath+hlx)
-
-    return 'Success!'
+    '''
+    return ckall
     
 
 def falseAlarmRemoval(dayId):
@@ -159,7 +167,7 @@ def falseAlarmRemoval(dayId):
     dutyCycle = np.zeros((totalVString,1))
     strCount = 0
     
-    print 'Construct Report on day %s' % (dayId)
+    print('Construct Report on day %s' % (dayId))
 
     for rf in localList:
         # read module    
@@ -197,7 +205,7 @@ def falseAlarmRemoval(dayId):
         dayStrings.to_csv(reportPath+dayId+'.csv') 
     #
     except:
-        print 'error on %s, but pass' % (dayId)
+        print('error on %s, but pass' % (dayId))
                                                                                                              
     return 'ok'
 
@@ -206,16 +214,25 @@ def falseAlarmRemoval(dayId):
 if __name__ == '__main__':
     
     if localStage == 1:
-        print 'Running Local Stage...'
+        print('Running Local Stage...')
         
         flist = glob.glob(inPath+'*.csv')
             
         #profiling 1
         start = time.time()
-        pool = mp.Pool(3)
-        results = pool.map(faultDetection, flist)
+        #pool = mp.Pool(1)
+        #results = pool.map(faultDetection, flist)
         #fullname = inPath+'S14-NBB-HL13-14.csv'
-        #faultDetection(fullname);
+        
+        ck_all = []
+        for f in flist:
+           ckall =  faultDetection(f)
+           ck_all.append(ckall)
+        
+        print('Length: ', len(ck_all))    
+        ck_all = pd.DataFrame(ck_all)
+        ck_all.to_csv(ckFile)    
+            
         
         end = time.time()
         runtime = end - start
@@ -227,7 +244,7 @@ if __name__ == '__main__':
         #global timing 
         start = time.time()
         
-        print 'Running Global Stage...'
+        print('Running Global Stage...')
         #date = '2016-06-06'#dateList
         pool = mp.Pool(3)
         results = pool.map(falseAlarmRemoval, dayList)
@@ -237,4 +254,4 @@ if __name__ == '__main__':
         msg = "Global Stage Multi-Processing Took {time} seconds to complete"
         print(msg.format(time=runtime))
         
-        print 'TEST DONE'
+        print('TEST DONE')
