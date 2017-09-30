@@ -101,7 +101,7 @@ def faultDetection(fullname):
         dayFaultCount = np.zeros((1,stringNum),dtype=np.float);
         
         try:#excetpion catch is necessary for robust code
-            for t in range(lenT):
+            for t in range(math.floor(lenT/2),math.floor(lenT/2)+1):
                 
                 # grab strings I from each timestamp
                 x=dfday.iloc[t,1:stringNum+1].as_matrix().reshape(stringNum,1)

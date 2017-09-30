@@ -28,7 +28,7 @@ endDTTest = '2016-06-30'
 
 timeRg = ['10:00','14:00'];#use pandas to get data within this range
 
-resPath = 'E:/myprojects/pv_detection/data/model_fault_0912/'
+resPath = 'E:/myprojects/pv_detection/data/model_fault_0928/'
 
 """
 Step 1: Extract data from database, table-hlx
@@ -156,7 +156,7 @@ def dataPartition(currents,features):
     y = currents[ndata_idx]
     
     print('Data Partition - DONE')
-    return x,y, centroids[maxId]
+    return x, y, centroids[maxId], centroids 
 
 
 #Step 3: Build model for individual string
@@ -199,7 +199,7 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         print('Shapes: ', stringCurrent.shape, Features.shape)
         
         #Data partition, seperate normal and abnormal data
-        norm_Features,norm_Current,slopeAvg = dataPartition(stringCurrent,Features)
+        norm_Features,norm_Current,slopeAvg, allSlopes = dataPartition(stringCurrent,Features)
         
         #Normal data modeling
         norm_Features = sm.add_constant(norm_Features)
@@ -263,7 +263,7 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         print(e)
         print('Not able to process string %s-%s' % (hlxID,strID))
     
-    return varScore,resErrMean,slopeAvg
+    return varScore,resErrMean,slopeAvg, allSlopes
 
     #set resErr > 10 to Fault label in restult file
     
@@ -293,10 +293,10 @@ def main():
         hlxID = testData[0]
         strID = 'I'+str(testData[1])
         FeatureList = ['FS1','Fs2','Fs1m','Fs2m','Wv','Wd','Sd','T0']
-        varScore,resMean,slopeAvg = strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
+        varScore,resMean,slopeAvg, allSlopes = strFaultDetection(hlxID, strID, FeatureList, startDTModel,endDTModel)
         varScores.append(varScore)
         resScores.append(resMean)
-        avgSlopes.append(slopeAvg)
+        avgSlopes.append(allSlopes)
     print(resScores)
     
     #Record all var scores
