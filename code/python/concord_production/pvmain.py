@@ -17,18 +17,29 @@ from scipy import signal
 import math
 
 #running stages
-localStage = 1
-globalStage = 0
+localStage = 0
+globalStage = 1
 
 #data paths
 #input hlx data
 #inPath = 'E:/myprojects/pv_detection/data/smoothedData_xinjiang/'
-inPath = 'E:/myprojects/pv_detection/data/filtered/'
+#inPath = 'E:/myprojects/pv_detection/data/filtered/'
 #output local stage path, change stage1 to dir like /local_03_23_5min_08_17
-outPath = 'E:/myprojects/pv_detection/data/experiment_results/local_06_02_10min_08_17_no_offset/'
+#outPath = 'E:/myprojects/pv_detection/data/experiment_results/local_06_02_10min_08_17_no_offset/'
 #xinjiang_local_05_12_10min_02_17/'
 #report path, global path  /global_03_23_5min_08_17
-reportPath = 'E:/myprojects/pv_detection/data/experiment_results/global_06_02_10min_08_17_no_offset/'
+#reportPath = 'E:/myprojects/pv_detection/data/experiment_results/global_06_02_10min_08_17_no_offset/'
+
+
+#inPath = 'E:/myprojects/pv_detection/temp_test/smoothedData_Jun_synthetic/'
+
+inPath = 'E:/myprojects/pv_detection/data/filtered/'
+
+outPath = 'E:/myprojects/pv_detection/temp_test/local_06_02_10min_08_17_no_offset/'
+
+reportPath = 'E:/myprojects/pv_detection/temp_test/global_06_02_10min_08_17_no_offset/'
+
+
 #xinjiang_global_05_12_10min_02_17/'
 
 ckFile = 'E:/myprojects/pv_detection/data/experiment_results/ck.csv'
@@ -144,7 +155,7 @@ def faultDetection(fullname):
         dayFaultCount = dayFaultCount/lenT    
         faultArr[dayCount,:] = dayFaultCount
         dayCount = dayCount + 1
-    '''
+    
     # record to file: date + strings fault alarms
     datesArr = np.asarray(dateList)
     dayResults = pd.DataFrame(faultArr, columns=colNames)
@@ -153,7 +164,7 @@ def faultDetection(fullname):
     #record local context detection results
     hlx = os.path.basename(fullname)
     dayResults.to_csv(outPath+hlx)
-    '''
+    
     return ckall
     
 
@@ -170,7 +181,8 @@ def falseAlarmRemoval(dayId):
     print('Construct Report on day %s' % (dayId))
 
     for rf in localList:
-        # read module    
+        # read module 
+        print(rf)   
         df = pd.read_csv(rf)
         df = df[df['date'] == dayId]
         # construct string name and duration table
@@ -204,8 +216,9 @@ def falseAlarmRemoval(dayId):
         #write to file report
         dayStrings.to_csv(reportPath+dayId+'.csv') 
     #
-    except:
-        print('error on %s, but pass' % (dayId))
+    except Exception as e: 
+            print(e)
+            print('error on %s, but pass' % (dayId))
                                                                                                              
     return 'ok'
 
@@ -220,10 +233,10 @@ if __name__ == '__main__':
             
         #profiling 1
         start = time.time()
-        #pool = mp.Pool(1)
-        #results = pool.map(faultDetection, flist)
+        pool = mp.Pool(3)
+        results = pool.map(faultDetection, flist)
         #fullname = inPath+'S14-NBB-HL13-14.csv'
-        
+        '''
         ck_all = []
         for f in flist:
            ckall =  faultDetection(f)
@@ -232,7 +245,7 @@ if __name__ == '__main__':
         print('Length: ', len(ck_all))    
         ck_all = pd.DataFrame(ck_all)
         ck_all.to_csv(ckFile)    
-            
+        '''    
         
         end = time.time()
         runtime = end - start

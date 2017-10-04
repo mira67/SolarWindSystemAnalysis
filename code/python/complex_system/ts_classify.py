@@ -1,4 +1,8 @@
 #PV Classification - A full pipeline, data query to preprocessing, modeling 
+# A multi-functional code: extract linear slope for strings by windows
+# Record to file
+# Query data to file
+# Code is modular and can be extended
 #Author: Qi Liu
 #Email: qi.liu@colorado.edu
 
@@ -22,6 +26,7 @@ timeRg = ['06:00','18:00'];#use pandas to get data within this range
 gtFile = 'E:/myprojects/pv_detection/data/classification_0929/labeldata/groundTruthPV.csv'
 cbPath = 'E:/myprojects/pv_detection/data/classification_0929/cb_raw_data_with_env/'
 strPath = 'E:/myprojects/pv_detection/data/classification_0929/pre_processed_with_label/'
+feaPath = 'E:/myprojects/pv_detection/data/classification_0929/classification_features/'
 
 """
 Step 1: Extract data from database, table-hlx
@@ -107,7 +112,7 @@ def queryWTData(startDT,endDT):
 
 #Identify Normal Data Clusters
 def dataPartition(currents,features):
-    bucketLen = 720 #how to determine the optimal bucketlength
+    bucketLen = 850 #how to determine the optimal bucketlength
     data_len = currents.size
     bucket_num = math.floor(data_len/bucketLen)
     
@@ -132,14 +137,14 @@ def dataPartition(currents,features):
     
     clusters,centroids = km.labels_, km.cluster_centers_
     
-    print('Clusters: ',clusters, centroids)
+    #print('Clusters: ',clusters, centroids)
     
     #pick higher mean clusters and obtain bucket IDX
     maxId = np.argmax(centroids)    
     norm_idx = np.where(clusters==maxId)
     norm_idx = norm_idx[0]#get out of tuple
     norm_bucketLen = norm_idx.size
-    print('norm_idx: ',norm_idx,norm_bucketLen)
+    #print('norm_idx: ',norm_idx,norm_bucketLen)
     
     #construc normal data for modeling
     ndata_idx = []
@@ -149,7 +154,7 @@ def dataPartition(currents,features):
         ndata_idx.extend(rng.tolist())
         
     #partitioned normal data 
-    print('features: ', features.shape)
+    #print('features: ', features.shape)
     x = features[ndata_idx,:]
     y = currents[ndata_idx]
     
@@ -161,25 +166,52 @@ def dataPartition(currents,features):
 def strPowerModel(Features,stringCurrent):
     #Build libear model
     lm = LinearRegression()
-    lm.fit(Features,stringCurrent)
+    lm.fit(Features,stringCurrent)    
     return lm
+
+"""Grab Slope Data"""
+def grabSlopeData(currents,features):
+    bucketLen = 800 #how to determine the optimal bucketlength
+    data_len = currents.size
+    bucket_num = math.floor(data_len/bucketLen)
+    
+    print('BucketNumber: ', bucket_num, data_len)
+    
+    #Pre-linear regression for computing slopes, rough model with single feature
+    slopes = np.zeros((bucket_num,1))
+    
+    for i in range(0,bucket_num):
+        x = features[i*bucketLen:(i+1)*bucketLen,3]#Fs2m
+        y = currents[i*bucketLen:(i+1)*bucketLen]
+        x = sm.add_constant(x)
+        
+        lm = strPowerModel(x,y)
+        
+        slopes[i] = lm.coef_[1]#extract slopes
+    return slopes
+
 
 """Normal Data Modeling"""
 def modelStrData(strFile):
     df = pd.read_csv(strFile)
     df = df.dropna(axis=0, how='any')
-    df_dup = df
+    smLen = 60
+    df = pd.rolling_mean(df, smLen)
+    df_dup = df.iloc[smLen:,:]
     colName = df.columns.values
     strName = colName[1:57]
     
     for idx, strName in enumerate(strName):
         current = df[strName].as_matrix()
-        features = df.iloc[:,57:63].as_matrix()#all features
+        current = current[smLen:]
+        features = df.iloc[smLen:,57:63].as_matrix()#all features
         
         nfea, ncurrent, slope, centroids = dataPartition(current,features)
         lm = strPowerModel(nfea,ncurrent)
+        print('Normal Model Variance score: %.4f' % lm.score(nfea, ncurrent))
         #estimated current
         predCurrent = lm.predict(features)
+        print('All Data Model Variance score: %.4f' % lm.score(features, current))
         
         strName = strName + '_model'
         #predCurrent = pd.DataFrame(predCurrent.reshape(-1),columns=strName)
@@ -271,7 +303,29 @@ def main():
     start = time.time()
     
     strFile = strPath + 'labeledStrData_with_env.csv'
-    modelStrData(strFile)
+    
+    #
+    df = pd.read_csv(strFile)
+    df = df.dropna(axis=0, how='any')
+    smLen = 60
+    df = pd.rolling_mean(df, smLen)
+    df_dup = df.iloc[smLen:,:]
+    colName = df.columns.values
+    strName = colName[1:57]
+    
+    all_slopes = pd.DataFrame()
+    
+    for idx, strName in enumerate(strName):
+        current = df[strName].as_matrix()
+        current = current[smLen:]
+        features = df.iloc[smLen:,57:63].as_matrix()#all features
+        
+        slopes = grabSlopeData(current,features)
+        all_slopes[strName] = pd.DataFrame(data=slopes, columns=[strName])
+        print(strName)
+    #obtain estimated data and record to file
+    filename = feaPath + 'slope_features_1003.csv'
+    all_slopes.to_csv(filename, sep=',',header=True)
     
     end = time.time()
     runtime = end - start
