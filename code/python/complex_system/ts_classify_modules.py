@@ -21,8 +21,8 @@ import glob
 import os
 
 #Parameters configuration
-startDT = '2016-01-01'
-endDT = '2016-12-31'
+startDT = '2016-04-15'
+endDT = '2016-04-16'
 
 timeRg = ['06:00','18:00'];#use pandas to get data within this range
 
@@ -35,12 +35,12 @@ otherPath = 'E:/myprojects/pv_detection/data/classification_0929/otherTest/'
 def queryAnyData(hlxID, startDT,endDT):
     # AND TIME(data_date) BETWEEN '08:00'AND '17:00'
     # AND TIME(data_date) BETWEEN '08:00'AND '17:00'
-    sql1 = """SELECT * FROM pingyuan2.hlx WHERE combinerbox = '{}' 
-            AND data_date BETWEEN '{}' AND '{}';"""
+    sql1 = """SELECT * FROM pingyuan2.hlx WHERE combinerbox = '{}' AND data_date BETWEEN '{}' AND '{}'
+    AND TIME(data_date) BETWEEN '06:00'AND '19:00' """
     sqlSts1 = sql1.format(hlxID, startDT,endDT)
     
-    sql2 = """SELECT data_date,Fs2m FROM pingyuan2.qxz WHERE data_date BETWEEN '{}' AND '{}';"""
-    sqlSts2 = sql2.format(startDT,endDT)
+    #sql2 = """SELECT data_date,Fs2m FROM pingyuan2.qxz WHERE data_date BETWEEN '{}' AND '{}';"""
+    #sqlSts2 = sql2.format(startDT,endDT)
     
     #Make database connetion
     db = pymysql.connect(host='localhost',
@@ -57,15 +57,17 @@ def queryAnyData(hlxID, startDT,endDT):
         cursor.execute(sqlSts1)
         db.commit()
         #collect query data
-        strCurrent = pd.DataFrame(cursor.fetchall())
+        cbData = pd.DataFrame(cursor.fetchall())
         
         '''grab environmental data'''
+        '''
         cursor.execute(sqlSts2)
         db.commit()
         #collect query data
         features = pd.DataFrame(cursor.fetchall())
         
         cbData = strCurrent.join(features.set_index('data_date'),on='data_date')
+        '''
         
     except:
         # Rollback in case there is any error
@@ -477,7 +479,7 @@ def main_generate_FFT():
     return "Wao!"      
 
 #region level slope, data extraction
-def main():
+def main_region_level_slope():
     #profiling
     start = time.time()
     
@@ -528,6 +530,53 @@ def main():
     
     return "a great day"        
                                     
+"""Main, locality analysis, variance across combiner boxes"""
+def main():
+    #profiling
+    start = time.time()
+    
+    #list of hlx
+    hlx_info = pd.read_csv('E:/myprojects/pv_detection/data/classification_0929/otherTest/hlx_info_test.csv')
+    hlxList = hlx_info['combinerbox'];
+    
+    hlxList=['S35-NBA-HL06']
+    
+    all_med = pd.DataFrame()
+    num_hlx = 1
+    for hlx in hlxList:
+        print(hlx)
+        
+        cbData = queryAnyData(hlx, startDT,endDT)
+        
+        #grab string currents, remove all zeros columns
+        strCur = cbData.iloc[:,1:16]
+        
+        strCur = strCur.loc[:, (strCur != 0).any(axis=0)]
+                
+        #compute string current median for this cb
+        strCur_med = strCur.median(axis = 1)
+
+        #add to all hlx dataframe
+        if num_hlx == 1:
+            all_med['data_date'] = cbData['data_date']
+            all_med[hlx] = strCur_med
+        else:
+            all_med[hlx] = strCur_med
+        
+    #write to csv file for analysis
+    #filename = "E:/myprojects/pv_detection/data/classification_0929/otherTest/hlx_meds_1013.csv"
+    #all_med.to_csv(filename, sep=',',header=True)
+    
+    filename = "E:/myprojects/pv_detection/data/classification_0929/otherTest/hlx_internal_shading_1013.csv"
+    cbData.to_csv(filename, sep=',',header=True)
+    
+    end = time.time()
+    runtime = end - start
+    msg = "CB Data Writing Process Took {time} seconds to complete"
+    print(msg.format(time=runtime))   
+           
+    return "A good day"
+
 """Execute Main"""   
 if __name__ == "__main__":
     main()   
