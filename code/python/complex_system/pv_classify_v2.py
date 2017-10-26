@@ -3,6 +3,7 @@
 # Query data to file
 # Code is modular and can be extended
 # Author: Qi Liu
+# Date 10/25/2017
 # Email: qi.liu@colorado.edu
 
 import pymysql.cursors
@@ -164,16 +165,18 @@ def feaExtract(hlxID, cuan_info):
     return "DONE"
 
 # for each day, organize all 8199 features into a matrix
-# record to a file - use matlab for quick DR and clustering analysis
-def clusterByday(windowNum):
+# Input: windowNum - data from which windown number to cluster
+# Need further work to configure it into date range?
+# record organized daily features to a file
+def featuresByday(windowNum):
     #grab all combiner boxes
     dPath = "E:/myprojects/pv_detection/data/classification_0929/classification_features/fft_5days_cbs/"#fft_5days_cbs
     strFiles = glob.glob(dPath + '*.csv')
     
-    # extract all feature vectors from all strings
+    # extract all feature vectors from all strings in the same window
     all_ffts = pd.DataFrame()
     for strf in strFiles:
-        #read cb all data and smooth
+        #read cb all data
         print(strf)
         df = pd.read_csv(strf)
         strName = os.path.basename(strf)
@@ -185,7 +188,19 @@ def clusterByday(windowNum):
     all_ffts.to_csv(filename, sep=',',header=True)
     #
     gc.collect()
-    return "You will be fine"
+    
+    return all_ffts
+
+# use with featureByday function
+# clustering method to partition states
+def clusterByday(windowNum):
+    win_ffts = featuresByday(windowNum)
+    random_state = 5
+    prior_k = 5 # prior knowledge about 
+    X = win_ffts[1:60,1:-1]
+    y_pred = KMeans(n_clusters=prior_k, random_state=random_state).fit_predict(X)
+    # record y_pred to file, with string ID + state ID (cluster ID)
+    return "Unsupervsied"
 
 # Step 4: Main
 def main_create_features():
