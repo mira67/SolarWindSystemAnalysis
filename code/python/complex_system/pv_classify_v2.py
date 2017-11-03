@@ -197,9 +197,14 @@ def clusterByday(windowNum):
     win_ffts = featuresByday(windowNum)
     random_state = 5
     prior_k = 5 # prior knowledge about 
-    X = win_ffts[1:60,1:-1]
-    y_pred = KMeans(n_clusters=prior_k, random_state=random_state).fit_predict(X)
+    X = win_ffts[1:60,1:-1].as_matrix() # To-Do: manual dim reduction for now
+    X = np.transpose(X)
+    kResults = KMeans(n_clusters=prior_k, random_state=random_state).fit_predict(X)
     # record y_pred to file, with string ID + state ID (cluster ID)
+    kOutput = pd.DataFrame()
+    # Append string ID as column
+    kOutput['StringID'] = win_ffts.columns.values.as_matrix()
+    # Append cluster[state] ID as column
     return "Unsupervsied"
 
 # Step 4: Main
