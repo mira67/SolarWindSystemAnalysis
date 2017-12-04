@@ -22,17 +22,27 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
+from matplotlib import pyplot
+from xgboost.sklearn import XGBClassifier
 import csv
 import time
-from xgboost.sklearn import XGBClassifier
 
 
 AnomalyTypeNum = 5
 FaultNum = 1034
 kfold = 4 # cross validation
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/FFTADIALLTimeSeries_rawsignal_fmt.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_4fold_xgboosting.csv'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_report.csv'
+#f1f2
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_agg_features.csv'
+#fs1+fs2+fs3
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_agg_compx_features.csv'
+#fs1+fs3
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/agg_cmpx_features.csv'
+#fs2+fs3
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_cmpx_features.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_f2f3.csv'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_report_f2f3.csv'
+#feature improtce calculation
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/Fea_importance_f2f3.csv'
 def pvKNN(trainX,testX,trainY,testY,k):
     knn = neighbors.KNeighborsClassifier(n_neighbors=k) 
     knn.fit(trainX, trainY)
@@ -175,9 +185,23 @@ def pvXBOOST(trainX,testX,trainY,testY):
     model_sklearn = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY, preds)
+     # feature importance
+    print(clf.feature_importances_)
+    # plot
+    pyplot.bar(range(len(clf.feature_importances_)), clf.feature_importances_)
+    pyplot.show()
+    FeatureImportance(clf.feature_importances_)
     print(conMar)
     return classification_report(testY, preds)
-
+def FeatureImportance(FI):
+    fi = open(FIPath, "a+") 
+    line = ''
+    for idx, item in enumerate(FI):
+        line = line+str(item)+','
+    fi.write(line+'\n')
+    print('sucessfully write feature importance index')
+    
+    
 def pvBagging(trainX,testX,trainY,testY):
     train = np.append(trainX, trainY, axis=1)
     #test = np.append(testX, testY, axis=1)
@@ -229,38 +253,38 @@ def pvKfoldValidation(data,kfold):
 #        msg = "PV KMeans Classification Tooks {time} seconds to complete"
 #        print(msg.format(time=runtime)) 
 #        rpt.write(report)
-#        rpt.writelines('\n*********the DecisionTree report************\n')
-#        start = time.time()
-#        report = pvDecisionTree(trainX,testX,trainY,testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV DecisionTree Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
-#        rpt.writelines('\n*********the KNN(K=1) report************\n')
-#        start = time.time()
-#        report = pvKNN(trainX,testX,trainY,testY, 1)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV KNN(K=1) Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
-#        rpt.writelines('\n*********the KNN(K=3) report************\n')
-#        start = time.time()
-#        report = pvKNN(trainX,testX,trainY,testY,3)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV KNN(K=3) Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
-#        rpt.writelines('\n*********the KNN(K=5) report************\n')
-#        start = time.time()
-#        report = pvKNN(trainX,testX,trainY,testY,5) 
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV KNN(K=5) Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
+        rpt.writelines('\n*********the DecisionTree report************\n')
+        start = time.time()
+        report = pvDecisionTree(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV DecisionTree Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=1) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY, 1)
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=1) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=3) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY,3)
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=3) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=5) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY,5) 
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=5) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
 #        rpt.writelines('\n*********the Bayes report************\n')
 #        start = time.time()
 #        report = pvBayes(trainX,testX,trainY,testY)
@@ -269,37 +293,38 @@ def pvKfoldValidation(data,kfold):
 #        msg = "PV Bayes Classification Tooks {time} seconds to complete"
 #        print(msg.format(time=runtime)) 
 #        rpt.write(report)
-#        rpt.writelines('\n*********the RandomForest report************\n') 
-#        start = time.time()
-#        report = pvRandomForest(trainX,testX,trainY,testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV RandomForest Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
-#        rpt.writelines('\n*********the ExtraTrees report************\n')
-#        start = time.time()
-#        report = pvExtraTreesClassifier(trainX,testX,trainY,testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV ExtraTrees Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)                
-#        rpt.writelines('\n*********the GradientBoosting report************\n')
-#        start = time.time()
-#        report = pvGBDT(trainX,testX,trainY,testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV GradientBoosting Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime))         
-#        rpt.write(report)
-#        rpt.writelines('\n*********the XGBoosting report************\n')
-#        start = time.time()
-#        report = pvXBOOST(trainX, testX, trainY, testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV GradientBoosting Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
+        rpt.writelines('\n*********the RandomForest report************\n') 
+        start = time.time()
+        report = pvRandomForest(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV RandomForest Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the ExtraTrees report************\n')
+        start = time.time()
+        report = pvExtraTreesClassifier(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV ExtraTrees Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)                
+        rpt.writelines('\n*********the GradientBoosting report************\n')
+        start = time.time()
+        report = pvGBDT(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV GradientBoosting Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime))         
+        rpt.write(report)
+        rpt.writelines('\n*********the XGBoosting report************\n')
+        start = time.time()
+        report = pvXBOOST(trainX, testX, trainY, testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV XGBoosting Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
         rpt.writelines('\n*********the Bagging report************\n')
         start = time.time()
         report = pvBagging(trainX, testX, trainY, testY)
@@ -344,7 +369,7 @@ def total_report():
                     
 if __name__ == '__main__':
         
-    data = pd.read_csv(inPath, delimiter=',', header=None)
+    data = pd.read_csv(inPath, delimiter=',')
     pvKfoldValidation(data,kfold)
     total_report()
 

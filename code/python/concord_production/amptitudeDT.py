@@ -29,10 +29,24 @@ import csv
 AnomalyTypeNum = 5
 FaultNum = 1034
 kfold = 4 # cross validation
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesAmptitude.csv'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesAmptitude.csv'
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameType_rawsignal.csv'
+aggFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
 outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_4fold_DT.csv'
 totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_report_DT.csv'
+def AggregationFeatures():
+    newColumns = ['mean','median','std','amp','Type']
+    df = pd.read_csv(inPath, header = None)
+    agg_df = pd.DataFrame(columns = newColumns)
+    agg_df.loc[:, 'mean'] = df.iloc[:, 1:-1].mean(axis=1)
+    agg_df.loc[:, 'median'] = df.iloc[:, 1:-1].median(axis=1)
+    agg_df.loc[:, 'std'] = df.iloc[:, 1:-1].std(axis=1)
+    agg_df.loc[:, 'amp'] = df.iloc[:, 1:-1].max(axis=1)
+    agg_df.loc[:, 'Type'] = df.iloc[:, -1]
+    agg_df.to_csv(aggFeaPath)
 
+        
+    
 
 def pvDecisionTree(trainX,testX,trainY,testY):
     tr = tree.DecisionTreeClassifier() 
@@ -106,10 +120,10 @@ def total_report():
 
                     
 if __name__ == '__main__':
-        
-    data = pd.read_csv(inPath, delimiter=',')
-    pvKfoldValidation(data,kfold)
-    total_report()
+    AggregationFeatures()  
+    #data = pd.read_csv(inPath, delimiter=',')
+    #pvKfoldValidation(data,kfold)
+   #total_report()
 
     
     
