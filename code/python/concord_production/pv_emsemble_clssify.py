@@ -24,6 +24,8 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from matplotlib import pyplot
 from xgboost.sklearn import XGBClassifier
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import csv
 import time
 
@@ -34,15 +36,21 @@ kfold = 4 # cross validation
 #f1f2
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_agg_features.csv'
 #fs1+fs2+fs3
-#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_agg_compx_features.csv'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/trends_agg_cmpx_features.csv'
 #fs1+fs3
-#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/agg_cmpx_features.csv'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/agg_cmpx_features.csv'
 #fs2+fs3
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_cmpx_features.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_f2f3.csv'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_report_f2f3.csv'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/trends_cmpx_features.csv'
+#agg(raw agg+ trends)+frq
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_frq_features.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/report_agg_frq_tsne.csv'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/total_report_agg_frq_tsne.csv'
 #feature improtce calculation
-FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/Fea_importance_f2f3.csv'
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/FI_agg_frq_tsne.csv'
+
+tsnePlotPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_frq_tsne_plot.csv'
+tsnePath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_frq_tsne.csv'
+
 def pvKNN(trainX,testX,trainY,testY,k):
     knn = neighbors.KNeighborsClassifier(n_neighbors=k) 
     knn.fit(trainX, trainY)
@@ -213,13 +221,56 @@ def pvBagging(trainX,testX,trainY,testY):
     conMar = confusion_matrix(testY,preds)
     #print(conMar)
     return classification_report(testY,preds)
+
+def pca(X):
+    pass
+    pca = PCA(n_components='mle',svd_solver='full') # MLE算法自己选择降维维度
+    #pca = PCA(n_components=3)
+    pca.fit(X)
+    return pca.transform(X)
+
+def tsne(X):
+    pass
+    t_sne = TSNE(n_components=3).fit_transform(X)
+#    df_tsne = pd.DataFrame()
+#        #get type col
+#    TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
+#    type_df = pd.read_csv(TypePath).loc[:,'Type']
+#    #adding type colum
+#    df_tsne['Type']=type_df.as_matrix()
+#    
+#
+#    df_tsne['x-tsne'] = t_sne[:,0]
+#    df_tsne['y-tsne'] = t_sne[:,1]
+#    df_tsne.to_csv(tsnePath)
+#    
+#    df_tsne_t1 =df_tsne.iloc[0:475,1:3].copy()
+#    df_tsne_t2 =df_tsne.iloc[475:704,1:3].copy()
+#    
+#    df_tsne_t2.index = range(len(df_tsne_t2))
+#    
+#    df_tsne_t3 =df_tsne.iloc[704:900,1:3].copy()
+#    df_tsne_t3.index = range(len(df_tsne_t3))
+#    df_tsne_t4 =df_tsne.iloc[904:,1:3].copy()
+#    df_tsne_t4.index = range(len(df_tsne_t4))
+#    df_tsne_t5 =df_tsne.iloc[900:904,1:3].copy()
+#    df_tsne_t5.index = range(len(df_tsne_t5))
+#    res = pd.concat([df_tsne_t1, df_tsne_t2, df_tsne_t3,df_tsne_t4,df_tsne_t5],axis=1)
+#    res.to_csv(tsnePlotPath)
+    return t_sne
  
 #dataset partition to train and test
 def pvKfoldValidation(data,kfold):
-    skf = StratifiedKFold(n_splits=kfold)
+    skf = StratifiedKFold(n_splits=kfold,random_state=None, shuffle=False)
     nCols = data.shape[1]
     #extract attributes and class target
     X = data.iloc[:,1:nCols-1].as_matrix()
+        # tsne
+    X_tsne = tsne(X)
+    #pca
+    #X_pca = pca(X)
+   
+    
     y = data.iloc[:,-1].as_matrix()
     #encode string labels to numeric labels
     le = preprocessing.LabelEncoder()
@@ -229,22 +280,22 @@ def pvKfoldValidation(data,kfold):
     rpt = open(outPath, "a+")
     print('starting crossing validation....')
     #cross validation
-    for train, test in skf.split(X, Y):
-        trainX = X[train,:] 
-        testX = X[test,:]
+    for train, test in skf.split(X_tsne, Y):
+        trainX = X_tsne[train,:] 
+        testX = X_tsne[test,:]
         trainY = Y[train].reshape((len(train),1))
         testY = Y[test].reshape((len(test),1))
         train = np.append(trainX, trainY, axis=1)
         test = np.append(testX, testY, axis=1)
         #choose classifiers
-#        rpt.writelines('\n*********the SVM report************\n')
-#        start = time.time()
-#        report = pvSVM(trainX,testX,trainY,testY)
-#        end = time.time()
-#        runtime = end - start
-#        msg = "PV SVM Classification Tooks {time} seconds to complete"
-#        print(msg.format(time=runtime)) 
-#        rpt.write(report)
+        rpt.writelines('\n*********the SVM report************\n')
+        start = time.time()
+        report = pvSVM(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV SVM Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
 #        rpt.writelines('\n*********the KMeans report************\n')
 #        start = time.time()
 #        report = pvKMEANS(trainX,testX,trainY,testY)

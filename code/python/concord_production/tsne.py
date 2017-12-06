@@ -29,8 +29,8 @@ n_sne = 1034
 #outPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_tsne_gnuplot.csv'
 
 #similarity feature set
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/cmpx_features.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/cmpx_tsne_gnuplot.csv'
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features_top9.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_tsne_plot.csv'
 def tsne():
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     df = pd.read_csv(inPath)

@@ -36,10 +36,15 @@ AnomalyTypeNum = 5
 FaultNum = 1034
 w=4
 kfold = 4 # cross validation
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameType_rawsignal.csv'
+#raw adi type
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameType_rawsignal.csv'
+#matrixPath='/Users/zhaoyingying/PVData/ADIbyCen/dtw_matrix.csv'
+#cmplxFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/cmpx_features.csv'
+#smoothed adi type
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/processedtimeSeriesADIType.csv'
 matrixPath='/Users/zhaoyingying/PVData/ADIbyCen/dtw_matrix.csv'
-cmplxFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/cmpx_features.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_cmpx_fea.csv'
+cmplxFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/cmpx_features.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/classification_report_cmpx_fea.csv'
 totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_report_cmpx_fea.csv'
 FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/cmpx_Fea_importance.csv'
 #create DTW matrix
@@ -422,9 +427,9 @@ def total_report():
 
                     
 if __name__ == '__main__': 
-    #mymatrix = dtwMatrix()
-    #np.savetxt(matrixPath, mymatrix, fmt='%.4f',delimiter=',')
-    #cmpxFeatures()
+#    mymatrix = dtwMatrix()
+#    np.savetxt(matrixPath, mymatrix, fmt='%.4f',delimiter=',')
+#    cmpxFeatures()
     data = pd.read_csv(cmplxFeaPath, delimiter=',')
     pvKfoldValidation(data,kfold)
     total_report()

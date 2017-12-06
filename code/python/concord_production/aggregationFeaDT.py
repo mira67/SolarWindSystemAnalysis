@@ -35,10 +35,46 @@ FaultNum = 1034
 kfold = 4 # cross validation
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesAmptitude.csv'
 inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameType_rawsignal.csv'
-aggFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/classification_report_agg.csv'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/classification_total_agg.csv'
-FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/Agg_Fea_importance.csv'
+aggFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_features_scale.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/classification_report_agg.csv'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/classification_total_agg.csv'
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/Agg_Fea_importance.csv'
+
+tsnePlotPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_tsne_plot.csv'
+tsnePath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_tsne.csv'
+
+def tsne(X):
+    pass
+    #pca = PCA(n_components='mle') # MLE算法自己选择降维维度
+    t_sne = TSNE(n_components=2).fit_transform(X)
+    df_tsne = pd.DataFrame()
+        #get type col
+    TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
+    type_df = pd.read_csv(TypePath).loc[:,'Type']
+    #adding type colum
+    df_tsne['Type']=type_df.as_matrix()
+    
+   # df_tsne['Type']= df.iloc[:,0]
+    df_tsne['x-tsne'] = t_sne[:,0]
+    df_tsne['y-tsne'] = t_sne[:,1]
+    df_tsne.to_csv(tsnePath)
+    
+    df_tsne_t1 =df_tsne.iloc[0:475,1:3].copy()
+    df_tsne_t2 =df_tsne.iloc[475:704,1:3].copy()
+    
+    df_tsne_t2.index = range(len(df_tsne_t2))
+    
+    df_tsne_t3 =df_tsne.iloc[704:900,1:3].copy()
+    df_tsne_t3.index = range(len(df_tsne_t3))
+    df_tsne_t4 =df_tsne.iloc[904:,1:3].copy()
+    df_tsne_t4.index = range(len(df_tsne_t4))
+    df_tsne_t5 =df_tsne.iloc[900:904,1:3].copy()
+    df_tsne_t5.index = range(len(df_tsne_t5))
+    res = pd.concat([df_tsne_t1, df_tsne_t2, df_tsne_t3,df_tsne_t4,df_tsne_t5],axis=1)
+    res.to_csv(tsnePlotPath)
+    return t_sne
+
+
 def AggregationFeatures():
     newColumns = ['mean','median','std','amp','Type']
     df = pd.read_csv(inPath, header = None)
@@ -50,7 +86,36 @@ def AggregationFeatures():
     agg_df.loc[:, 'Type'] = df.iloc[:, -1]
     agg_df.to_csv(aggFeaPath)
 
-        
+def tsne(X):
+    pass
+    #pca = PCA(n_components='mle') # MLE算法自己选择降维维度
+    t_sne = TSNE(n_components=2).fit_transform(X)
+    df_tsne = pd.DataFrame()
+        #get type col
+    TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
+    type_df = pd.read_csv(TypePath).loc[:,'Type']
+    #adding type colum
+    df_tsne['Type']=type_df.as_matrix()
+    
+   # df_tsne['Type']= df.iloc[:,0]
+    df_tsne['x-tsne'] = t_sne[:,0]
+    df_tsne['y-tsne'] = t_sne[:,1]
+    df_tsne.to_csv(tsnePath)
+    
+    df_tsne_t1 =df_tsne.iloc[0:475,1:3].copy()
+    df_tsne_t2 =df_tsne.iloc[475:704,1:3].copy()
+    
+    df_tsne_t2.index = range(len(df_tsne_t2))
+    
+    df_tsne_t3 =df_tsne.iloc[704:900,1:3].copy()
+    df_tsne_t3.index = range(len(df_tsne_t3))
+    df_tsne_t4 =df_tsne.iloc[904:,1:3].copy()
+    df_tsne_t4.index = range(len(df_tsne_t4))
+    df_tsne_t5 =df_tsne.iloc[900:904,1:3].copy()
+    df_tsne_t5.index = range(len(df_tsne_t5))
+    res = pd.concat([df_tsne_t1, df_tsne_t2, df_tsne_t3,df_tsne_t4,df_tsne_t5],axis=1)
+    res.to_csv(tsnePlotPath)
+    return t_sne       
     
 
 def pvKNN(trainX,testX,trainY,testY,k):
@@ -230,6 +295,12 @@ def pvKfoldValidation(data,kfold):
     nCols = data.shape[1]
     #extract attributes and class target
     X = data.iloc[:,1:nCols-1].as_matrix()
+        # tsne
+    #print('starting tsne')
+    #X_tsne = tsne(X)
+   # print(X_tsne)
+    
+    
     y = data.iloc[:,-1].as_matrix()
     #encode string labels to numeric labels
     le = preprocessing.LabelEncoder()

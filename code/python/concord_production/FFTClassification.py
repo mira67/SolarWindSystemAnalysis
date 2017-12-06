@@ -7,26 +7,91 @@ Created on Fri Nov 10 14:58:02 2017
 
 import numpy as np
 import pandas as pd
-import time
 from sklearn import svm 
 from sklearn.metrics import classification_report,confusion_matrix
 from sklearn import preprocessing
 from sklearn.model_selection import StratifiedKFold
-import math
-from xgboost.sklearn import XGBClassifier
+from sklearn import neighbors 
+from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
+from sklearn import tree
+from sklearn.naive_bayes import GaussianNB, MultinomialNB #Bayes
+from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 from matplotlib import pyplot
+from xgboost.sklearn import XGBClassifier
+import csv
+import time
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import scale
+import glob
+import os
+
+#enable the stage...
+fft_generation = 0
+fft_classification = 1
 
 AnomalyTypeNum = 5
 FaultNum = 1034
 kfold = 4 # cross validation
 inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameId_rawsignal.csv'
-fftPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_features.csv'
-formatfftPath = '/Users/zhaoyingying/PVData/ADIbyCen/FFTADIALLTimeSeries_rawsignal_fmt.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_report.csv'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/trends_classification_total.csv'
-FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/fft_Fea_importance.csv'
+fftPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/frq_features_'
+#formatfftPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features.csv'
+fftClssPath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/report_'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/total_report_'
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/Fea_importance_'
+tsnePlotPath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/frq_tsne_plot.csv'
+tsnePath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/frq_tsne.csv'
 #inPath = 'D:/Xiaomei/SolarEnergy/SolarEnergy/python/classificationADI/ADItimeseries/0600_1800/ADIbyCen/ADIALLTimeSeriesrenameId.csv'
 #outPath = 'D:/Xiaomei/SolarEnergy/SolarEnergy/python/classificationADI/ADItimeseries/0600_1800/ADIbyCen/FFTADIALLTimeSeries1min_722ws.csv'
+# pca
+def pca(X):
+    pass
+    #pca = PCA(n_components='mle') # MLE算法自己选择降维维度
+    pca = PCA(n_components=2,whiten=True,svd_solver='randomized') #根据mle自动先择的520维
+    pca.fit(X)
+    X.save
+    return pca.transform(X)
+
+def tsne(X):
+    pass
+    #pca = PCA(n_components='mle') # MLE算法自己选择降维维度
+    t_sne = TSNE(n_components=2).fit_transform(X)
+    df_tsne = pd.DataFrame()
+        #get type col
+    TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
+    type_df = pd.read_csv(TypePath).loc[:,'Type']
+    #adding type colum
+    df_tsne['Type']=type_df.as_matrix()
+    
+   # df_tsne['Type']= df.iloc[:,0]
+    df_tsne['x-tsne'] = t_sne[:,0]
+    df_tsne['y-tsne'] = t_sne[:,1]
+    df_tsne.to_csv(tsnePath)
+    
+    df_tsne_t1 =df_tsne.iloc[0:475,1:3].copy()
+    df_tsne_t2 =df_tsne.iloc[475:704,1:3].copy()
+    
+    df_tsne_t2.index = range(len(df_tsne_t2))
+    
+    df_tsne_t3 =df_tsne.iloc[704:900,1:3].copy()
+    df_tsne_t3.index = range(len(df_tsne_t3))
+    df_tsne_t4 =df_tsne.iloc[904:,1:3].copy()
+    df_tsne_t4.index = range(len(df_tsne_t4))
+    df_tsne_t5 =df_tsne.iloc[900:904,1:3].copy()
+    df_tsne_t5.index = range(len(df_tsne_t5))
+    res = pd.concat([df_tsne_t1, df_tsne_t2, df_tsne_t3,df_tsne_t4,df_tsne_t5],axis=1)
+    res.to_csv(tsnePlotPath)
+    return t_sne
+def norm(X):
+    norm = pd.DataFrame()
+    norm.iloc[:,:]= X[:,:].apply(lambda x: (x-np.min(x))/(np.max(x)-np.min(x)))
+    return norm
 def fftTrans(current,Fs, window_size):
     Fs = Fs;  # sampling rate
     #Ts = 1.0/Fs; # sampling interval
@@ -80,24 +145,31 @@ def generate_FFT():
     
     #Sampling rate
     Fs = 1/1
-    window_size = 30
-    all_ffts = pd.DataFrame()
+    #find trends
+    #window_size = 30
+    #find daily frq
+    for window_size in range(10,361,10):
+        all_ffts = pd.DataFrame()
         
-    print(len(ADIID))
-    for idx, ADIName in enumerate(ADIID):
-        fft_fea, frq_rep = fftTrans(ALLADI[:,idx],Fs, window_size)    
-        all_ffts[ADIName] = pd.DataFrame(data=fft_fea, columns=[ADIName])
-    trends_fea= pd.DataFrame()
-    stplen = math.floor(window_size/2)
-    trends_fea = all_ffts.iloc[0::stplen,:]
-    trends_fea.index = range(len(trends_fea))
-    new_trends_fea = trends_fea.T
+        for idx, ADIName in enumerate(ADIID):
+            print('starting fft...')
+            fft_fea, frq_rep = fftTrans(ALLADI[:,idx],Fs, window_size)    
+            all_ffts[ADIName] = pd.DataFrame(data=fft_fea, columns=[ADIName])
+            trends_fea= pd.DataFrame()
+    #get trends
+    #stplen = math.floor(window_size/2)
+    #trends_fea = all_ffts.iloc[0::stplen,:]
+    #get daily frq
+        trends_fea = all_ffts.iloc[0:,:]
+        print(trends_fea)
+        trends_fea.index = range(len(trends_fea))
+        new_trends_fea = trends_fea.T
     #get type col
-    TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
-    type_df = pd.read_csv(TypePath).loc[:,'Type']
+        TypePath= '/Users/zhaoyingying/PVData/ADIbyCen/agg_features.csv'
+        type_df = pd.read_csv(TypePath).loc[:,'Type']
     #adding type colum
-    new_trends_fea['Type']=type_df.as_matrix()
-    new_trends_fea.to_csv(fftPath)
+        new_trends_fea['Type']=type_df.as_matrix()
+        new_trends_fea.to_csv(fftPath+str(window_size)+'interval.csv')
     
     end = time.time()
     runtime = end - start
@@ -105,7 +177,10 @@ def generate_FFT():
     print(msg.format(time=runtime))
     return "Wao!" 
    
-def formafFFT():
+def formatFFT():
+    '''
+    unused
+    '''
     fftmatrix = pd.read_csv(fftPath).iloc[:,1:].as_matrix()
     newfftmatrix = np.transpose(fftmatrix)
     
@@ -129,6 +204,7 @@ def formafFFT():
     
 
 def pvKNN(trainX,testX,trainY,testY,k):
+    
     knn = neighbors.KNeighborsClassifier(n_neighbors=k) 
     knn.fit(trainX, trainY)
     preds = knn.predict(testX)
@@ -275,7 +351,7 @@ def pvXBOOST(trainX,testX,trainY,testY):
     # plot
     pyplot.bar(range(len(clf.feature_importances_)), clf.feature_importances_)
     pyplot.show()
-    FeatureImportance(clf.feature_importances_)
+    #FeatureImportance(clf.feature_importances_,fname)
     print(conMar)
     return classification_report(testY, preds)
 def FeatureImportance(FI):
@@ -300,18 +376,28 @@ def pvBagging(trainX,testX,trainY,testY):
     return classification_report(testY,preds)
 
 #dataset partition to train and test
-def pvKfoldValidation(data,kfold):
-    skf = StratifiedKFold(n_splits=kfold)
+def pvKfoldValidation(data,kfold,fname):
+    skf = StratifiedKFold(n_splits=kfold,random_state=None, shuffle=False)
     nCols = data.shape[1]
     #extract attributes and class target
     X = data.iloc[:,1:nCols-1].as_matrix()
+    #normalize x
+    
+
+    # tsne
+    #print('starting tsne')
+    #X_tsne = tsne(X)
+   # print(X_tsne)
+    
+
+ 
     y = data.iloc[:,-1].as_matrix()
     #encode string labels to numeric labels
     le = preprocessing.LabelEncoder()
     le.fit(y)
     Y = le.transform(y)
     #report file
-    rpt = open(outPath, "a+")
+    rpt = open(outPath+fname, "a+")
     print('starting crossing validation....')
     #cross validation
     for train, test in skf.split(X, Y):
@@ -330,14 +416,14 @@ def pvKfoldValidation(data,kfold):
         msg = "PV SVM Classification Tooks {time} seconds to complete"
         print(msg.format(time=runtime)) 
         rpt.write(report)
-        rpt.writelines('\n*********the KMeans report************\n')
-        start = time.time()
-        report = pvKMEANS(trainX,testX,trainY,testY)
-        end = time.time()
-        runtime = end - start
-        msg = "PV KMeans Classification Tooks {time} seconds to complete"
-        print(msg.format(time=runtime)) 
-        rpt.write(report)
+#        rpt.writelines('\n*********the KMeans report************\n')
+#        start = time.time()
+#        report = pvKMEANS(trainX,testX,trainY,testY)
+#        end = time.time()
+#        runtime = end - start
+#        msg = "PV KMeans Classification Tooks {time} seconds to complete"
+#        print(msg.format(time=runtime)) 
+#        rpt.write(report)
         rpt.writelines('\n*********the DecisionTree report************\n')
         start = time.time()
         report = pvDecisionTree(trainX,testX,trainY,testY)
@@ -422,14 +508,14 @@ def pvKfoldValidation(data,kfold):
     #close report file
     rpt.close()
     return 'ok' 
-def total_report():
+def total_report(fname):
     precision=[]
     recall=[]
     f1=[]
     method=[]
 
     #get method and precision ,recall ,f1
-    with open(outPath) as f:
+    with open(outPath+fname) as f:
         f_csv = csv.reader(f)
         for row in f_csv:
             if(len(row)>0):
@@ -449,14 +535,19 @@ def total_report():
     #get average
     print(results.groupby('Method').mean())
     
-    results.groupby('Method').mean().to_csv(totalreportPath)  
+    results.groupby('Method').mean().to_csv(totalreportPath+fname)  
     
 if __name__ == '__main__':
-    #generate_FFT()
-    #formafFFT()
+    if fft_generation == 1:
+        generate_FFT()
+        #formatFFT()
         
-    data = pd.read_csv(fftPath, delimiter=',')
-    pvKfoldValidation(data,kfold)
-    total_report()
+    if fft_classification ==1:
+        flist = glob.glob(fftClssPath+'*.csv')        
+        for f in flist:
+            fftname = os.path.basename(f)
+            data = pd.read_csv(f, delimiter=',')
+            pvKfoldValidation(data,kfold,fftname)
+            total_report(fftname)
     
     
