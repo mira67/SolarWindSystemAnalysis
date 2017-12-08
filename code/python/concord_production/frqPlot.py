@@ -29,26 +29,31 @@ import csv
 AnomalyTypeNum = 5
 FaultNum = 1034
 
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/FFTADIALLTimeSeries_rawsignal_fmt_forPlot.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/frq_plot.csv'
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/frq_features_600interval.csv'  
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_plot_360interval.csv'
+ 
    
 def frq_format():
+    #get ready for plot
 
     
-    dt = pd.read_csv(inPath, delimiter=',', header=None)               
-    dt =dt.iloc[:,:-1]
-    #print(dt)
+    dt = pd.read_csv(inPath, delimiter=',') 
+    dt2 = dt.drop(['Unnamed: 0'],axis = 1)   
+    Type = dt2.pop('Type')
+    dt2.insert(0,'Type',Type)         
+    dt2 =dt2.iloc[:,:]
               
     #total:
     maxresults = pd.DataFrame()
-    maxresults = pd.DataFrame(data=dt.groupby(dt.loc[:,0]).max())
+    maxresults = pd.DataFrame(data=dt2.groupby(dt2.iloc[:,0]).max())
+    print(maxresults)
 
     
     minresults = pd.DataFrame()
-    minresults = pd.DataFrame(data=dt.groupby(dt.loc[:,0]).min())
+    minresults = pd.DataFrame(data=dt2.groupby(dt2.iloc[:,0]).min())
     
     meanresults = pd.DataFrame()
-    meanresults = pd.DataFrame(data=dt.groupby(dt.loc[:,0]).mean())
+    meanresults = pd.DataFrame(data=dt2.groupby(dt2.iloc[:,0]).mean())
    
     
     newdf = pd.concat([maxresults,minresults,meanresults])

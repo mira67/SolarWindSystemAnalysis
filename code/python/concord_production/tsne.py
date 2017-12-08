@@ -29,8 +29,10 @@ n_sne = 1034
 #outPath = '/Users/zhaoyingying/PVData/ADIbyCen/trends_tsne_gnuplot.csv'
 
 #similarity feature set
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features_top9.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_tsne_plot.csv'
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/frq_features_600interval.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features_plot.csv'
+#3dplot 
+outPath3d = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features_3dplot.csv'
 def tsne():
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     df = pd.read_csv(inPath)
@@ -39,10 +41,10 @@ def tsne():
     #concert to the fomat for gnuplot
     df_tsne = pd.DataFrame()
     df_tsne['Type']= df.iloc[:,0]
-    df_tsne['x-tsne'] = tsne_results[:,0]
-    df_tsne['y-tsne'] = tsne_results[:,1]
-    #df_tsne_plot = pd.DataFrame(columns=['#Type','#type1-x-tsne','type1-y-tsne','type2-x-tsne','type2-y-tsne','type3-x-tsne','type3-y-tsne','type4-x-tsne','type4-y-tsne','type5-x-tsne','type5-y-tsne'])
-    #results['Method'] = pd.DataFrame(data=method, columns=['Method'])
+    df_tsne['#x-tsne'] = tsne_results[:,0]
+    df_tsne['#y-tsne'] = tsne_results[:,1]
+    #df_tsne['z-tsne'] = tsne_results[:,2]
+    #df_tsne.to_csv(outPath3d,index = False)
  
     print(df_tsne.iloc[0:475,1:3])
     df_tsne_t1 =df_tsne.iloc[0:475,1:3].copy()

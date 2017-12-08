@@ -30,6 +30,8 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import scale
 import glob
 import os
+import matplotlib.pyplot as plt
+import math
 
 #enable the stage...
 fft_generation = 0
@@ -38,17 +40,15 @@ fft_classification = 1
 AnomalyTypeNum = 5
 FaultNum = 1034
 kfold = 4 # cross validation
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameId_rawsignal.csv'
-fftPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/frq_features_'
-#formatfftPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features.csv'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameId_rawsignal.csv'
+#fftPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/frq_features_'
+##formatfftPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features.csv'
 fftClssPath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/'
 outPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/report_'
 totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/total_report_'
 FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/Fea_importance_'
-tsnePlotPath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/frq_tsne_plot.csv'
-tsnePath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/frq_tsne.csv'
-#inPath = 'D:/Xiaomei/SolarEnergy/SolarEnergy/python/classificationADI/ADItimeseries/0600_1800/ADIbyCen/ADIALLTimeSeriesrenameId.csv'
-#outPath = 'D:/Xiaomei/SolarEnergy/SolarEnergy/python/classificationADI/ADItimeseries/0600_1800/ADIbyCen/FFTADIALLTimeSeries1min_722ws.csv'
+
+
 # pca
 def pca(X):
     pass
@@ -104,29 +104,35 @@ def fftTrans(current,Fs, window_size):
     #init frq
     frq = 0.0
     w_num = 0
-    for w_num in range(0, round(lenN/ws) - 1):
+
+    for w_num in range(0, math.ceil(lenN/ws)):
+        
         y_w = y[w_num*ws:(w_num+1)*ws]
-        n = len(y_w) # length of the signal
+        n = len(y_w) # length of the signal  
+    
         k = np.arange(n)
         T = n/Fs
         frq = k/T # two sides frequency range
         frq = frq[range(round(n/2))] # one side frequency range
         
-        #Y = np.fft.fft(y)/n # fft computing and normalization?
-        Y = np.fft.fft(y_w) # fft computing and no normalization
+        Y = np.fft.fft(y_w)/n # fft computing and normalization
+
         Y = Y[range(round(n/2))]
+
         Y = abs(Y)
         #expand numpy array
         if w_num == 0:
             ws_Y = Y
         else:
-            ws_Y = np.append(ws_Y,Y)               
+            ws_Y = np.append(ws_Y,Y)  
+            
 
     
     #make the length of frq same as fft
-    frq_rep = np.matlib.repmat(frq, 1,w_num+1).reshape(-1)
+   # frq_rep = np.matlib.repmat(frq, 1,w_num+1).reshape(-1)
 
-    return ws_Y, frq_rep
+    #return ws_Y, frq_rep
+    return ws_Y
 
 def generate_FFT():
     '''
@@ -144,24 +150,28 @@ def generate_FFT():
 
     
     #Sampling rate
-    Fs = 1/1
+    Fs = 1/60
     #find trends
     #window_size = 30
+    
     #find daily frq
-    for window_size in range(10,361,10):
+    for window_size in range(30,722,30):
         all_ffts = pd.DataFrame()
         
         for idx, ADIName in enumerate(ADIID):
-            print('starting fft...')
-            fft_fea, frq_rep = fftTrans(ALLADI[:,idx],Fs, window_size)    
+           # fft for the i-th anomaly
+            fft_fea = fftTrans(ALLADI[:,idx],Fs, window_size) 
+           
             all_ffts[ADIName] = pd.DataFrame(data=fft_fea, columns=[ADIName])
-            trends_fea= pd.DataFrame()
+        all_ffts.to_csv('/Users/zhaoyingying/PVData/ADIbyCen/test.csv')
+        trends_fea= pd.DataFrame()
     #get trends
     #stplen = math.floor(window_size/2)
     #trends_fea = all_ffts.iloc[0::stplen,:]
     #get daily frq
+        
         trends_fea = all_ffts.iloc[0:,:]
-        print(trends_fea)
+        #print(trends_fea)
         trends_fea.index = range(len(trends_fea))
         new_trends_fea = trends_fea.T
     #get type col
@@ -174,7 +184,7 @@ def generate_FFT():
     end = time.time()
     runtime = end - start
     msg = "Str Data Writing Process Took {time} seconds to complete"
-    print(msg.format(time=runtime))
+    print(msg.format(time=runtime)) 
     return "Wao!" 
    
 def formatFFT():

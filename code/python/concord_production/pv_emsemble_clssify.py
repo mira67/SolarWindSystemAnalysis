@@ -41,7 +41,7 @@ kfold = 4 # cross validation
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/agg_cmpx_features.csv'
 #fs2+fs3
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/smoothedADI_features_classification/trends_cmpx_features.csv'
-#agg(raw agg+ trends)+frq
+#agg+frq
 inPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_frq_features.csv'
 outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/report_agg_frq_tsne.csv'
 totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/total_report_agg_frq_tsne.csv'
@@ -224,9 +224,14 @@ def pvBagging(trainX,testX,trainY,testY):
 
 def pca(X):
     pass
-    pca = PCA(n_components='mle',svd_solver='full') # MLE算法自己选择降维维度
-    #pca = PCA(n_components=3)
+    #pca = PCA(n_components='mle',svd_solver='full') # MLE算法自己选择降维维度
+    
+    pca = PCA(n_components=3)
+    
     pca.fit(X)
+    print('starting pca...')
+    print (pca.explained_variance_)
+    print(pca.explained_variance_ratio_)
     return pca.transform(X)
 
 def tsne(X):
@@ -266,9 +271,10 @@ def pvKfoldValidation(data,kfold):
     #extract attributes and class target
     X = data.iloc[:,1:nCols-1].as_matrix()
         # tsne
-    X_tsne = tsne(X)
+    #X_tsne = tsne(X)
     #pca
-    #X_pca = pca(X)
+    #pca = PCA(X)
+
    
     
     y = data.iloc[:,-1].as_matrix()
@@ -280,9 +286,9 @@ def pvKfoldValidation(data,kfold):
     rpt = open(outPath, "a+")
     print('starting crossing validation....')
     #cross validation
-    for train, test in skf.split(X_tsne, Y):
-        trainX = X_tsne[train,:] 
-        testX = X_tsne[test,:]
+    for train, test in skf.split(X, Y):
+        trainX = X[train,:] 
+        testX = X[test,:]
         trainY = Y[train].reshape((len(train),1))
         testY = Y[test].reshape((len(test),1))
         train = np.append(trainX, trainY, axis=1)
