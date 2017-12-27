@@ -7,7 +7,7 @@ import glob
 class data_processed:
 
     def __init__(self):
-        self.path = 'C:\Users\Pan\Desktop\\test'
+        self.path = 'F:\PVData'
         self.StringName = ['I1','I10','I11','I12','I13','I14','I15','I16','I2','I3','I4','I5','I6','I7','I8','I9']
 
     def hlx_processed(self,df):
@@ -39,7 +39,7 @@ class data_processed:
 
 if __name__ == '__main__':
     process = data_processed()
-    process.hlx_processed_offline('350','202','2017-07-01')
+  # process.hlx_processed_offline('350','202','2017-07-01')
 
 
 

@@ -36,6 +36,7 @@ import math
 #enable the stage...
 fft_generation = 0
 fft_classification = 1
+FI_analysis = 0
 
 AnomalyTypeNum = 5
 FaultNum = 1034
@@ -43,12 +44,15 @@ kfold = 4 # cross validation
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameId_rawsignal.csv'
 #fftPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/frq_features_'
 ##formatfftPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features.csv'
-fftClssPath='/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/report_'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/total_report_'
-FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/fft_results/Fea_importance_'
+fftClssPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/confusionMatrix/frq_report.csv'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/confusionMatrix/frq_total_report.csv'
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_FI.csv'
+FeaPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/frq_features_600interval.csv'
 
-
+conMarPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/confusionMatrix/conMar_frq.csv'
+    #confusion matrix print
+cnm = open(conMarPath,"a+")
 # pca
 def pca(X):
     pass
@@ -213,13 +217,16 @@ def formatFFT():
 
     
 
+
+
 def pvKNN(trainX,testX,trainY,testY,k):
-    
     knn = neighbors.KNeighborsClassifier(n_neighbors=k) 
     knn.fit(trainX, trainY)
     preds = knn.predict(testX)
     conMar = confusion_matrix(testY,preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**knn-confusion martix, and k= '+ str(k)+'\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds) 
 
 def pvDecisionTree(trainX,testX,trainY,testY):
@@ -227,7 +234,9 @@ def pvDecisionTree(trainX,testX,trainY,testY):
     tr.fit(trainX, trainY)
     preds = tr.predict(testX)
     conMar = confusion_matrix(testY,preds)
-    #print(conMar)
+    print(conMar)
+    cnm.writelines('\n**DecisionTree-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds) 
 
 def pvSVM(trainX,testX,trainY,testY):
@@ -235,14 +244,19 @@ def pvSVM(trainX,testX,trainY,testY):
     svc.fit(trainX, trainY)
     preds = svc.predict(testX)
     conMar = confusion_matrix(testY,preds)
-    #print(conMar)
+    print(conMar)
+    cnm.writelines('\n**SVM-confusion martix\n')
+    print('sucessfully write')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)   
 
 def pvKMEANS(trainX,testX,trainY,testY):
     kmeans = KMeans(n_clusters=AnomalyTypeNum,random_state=0).fit(trainX, trainY)
     preds = kmeans.predict(testX)
     conMar = confusion_matrix(testY,preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**kMEANS-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)  
 #Bayes
 def pvBayes(trainX,testX,trainY,testY):
@@ -262,7 +276,9 @@ def pvBayes(trainX,testX,trainY,testY):
     #print 'preds: ' + str(preds)
 
     conMar = confusion_matrix(test[:, -1], preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**Bayes-confusion martix\n')
+    cnm.write(np.array2string(conMar))
 
     target_names = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4']
     return classification_report(test[:, -1], preds, target_names=target_names)
@@ -280,7 +296,9 @@ def pvGMM(trainX,testX,trainY,testY):
         pred = clf.predict([i[0:-1]])
         preds.append(pred[0])
     conMar = confusion_matrix(test[:, -1], preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**pvGMM-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     target_names = ['class 0', 'class 1', 'class 2', 'class 3', 'class 4']
     return classification_report(test[:, -1], preds, target_names=target_names)
 
@@ -293,7 +311,9 @@ def pvRandomForest(trainX,testX,trainY,testY):
     clf = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY,preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**RF-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)  
  
 def pvExtraTreesClassifier(trainX,testX,trainY,testY):
@@ -305,7 +325,9 @@ def pvExtraTreesClassifier(trainX,testX,trainY,testY):
     clf = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY,preds)
-    #print(conMar)
+    print(conMar)
+    cnm.writelines('\n**ET-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)  
 
 def pvAdaBoosting(trainX,testX,trainY,testY):
@@ -317,7 +339,9 @@ def pvAdaBoosting(trainX,testX,trainY,testY):
     clf = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY,preds)
-   # print(conMar)
+    print(conMar)
+    cnm.writelines('\n**AdaBoosting-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)
 
 def pvGBDT(trainX,testX,trainY,testY):
@@ -329,7 +353,9 @@ def pvGBDT(trainX,testX,trainY,testY):
     clf = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY,preds)
-    #print(conMar)
+    print(conMar)
+    cnm.writelines('\n**pvGBDT-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)
 
 def pvXBOOST(trainX,testX,trainY,testY):
@@ -361,8 +387,10 @@ def pvXBOOST(trainX,testX,trainY,testY):
     # plot
     pyplot.bar(range(len(clf.feature_importances_)), clf.feature_importances_)
     pyplot.show()
-    #FeatureImportance(clf.feature_importances_,fname)
+    FeatureImportance(clf.feature_importances_)
     print(conMar)
+    cnm.writelines('\n**XGBoosting-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY, preds)
 def FeatureImportance(FI):
     fi = open(FIPath, "a+") 
@@ -382,9 +410,10 @@ def pvBagging(trainX,testX,trainY,testY):
     clf = clf.fit(X, Y)
     preds = clf.predict(testX)
     conMar = confusion_matrix(testY,preds)
-    #print(conMar)
+    print(conMar)
+    cnm.writelines('\n**Bagging-confusion martix\n')
+    cnm.write(np.array2string(conMar))
     return classification_report(testY,preds)
-
 #dataset partition to train and test
 def pvKfoldValidation(data,kfold,fname):
     skf = StratifiedKFold(n_splits=kfold,random_state=None, shuffle=False)
@@ -392,14 +421,6 @@ def pvKfoldValidation(data,kfold,fname):
     #extract attributes and class target
     X = data.iloc[:,1:nCols-1].as_matrix()
     #normalize x
-    
-
-    # tsne
-    #print('starting tsne')
-    #X_tsne = tsne(X)
-   # print(X_tsne)
-    
-
  
     y = data.iloc[:,-1].as_matrix()
     #encode string labels to numeric labels
@@ -518,6 +539,159 @@ def pvKfoldValidation(data,kfold,fname):
     #close report file
     rpt.close()
     return 'ok' 
+#dataset partition to train and test
+def pvKfoldValidation2(data,kfold):
+    skf = StratifiedKFold(n_splits=kfold,random_state=None, shuffle=False)
+    nCols = data.shape[1]
+    #extract attributes and class target
+    X = data.iloc[:,1:nCols-1].as_matrix()
+    #normalize x
+ 
+    y = data.iloc[:,-1].as_matrix()
+    #encode string labels to numeric labels
+    le = preprocessing.LabelEncoder()
+    le.fit(y)
+    Y = le.transform(y)
+    #report file
+    rpt = open(outPath, "a+")
+    print('starting crossing validation....')
+    #cross validation
+    for train, test in skf.split(X, Y):
+        trainX = X[train,:] 
+        testX = X[test,:]
+        trainY = Y[train].reshape((len(train),1))
+        testY = Y[test].reshape((len(test),1))
+        train = np.append(trainX, trainY, axis=1)
+        test = np.append(testX, testY, axis=1)
+ #choose classifiers
+        rpt.writelines('\n*********the SVM report************\n')
+        start = time.time()
+        report = pvSVM(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV SVM Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+#        rpt.writelines('\n*********the KMeans report************\n')
+#        start = time.time()
+#        report = pvKMEANS(trainX,testX,trainY,testY)
+#        end = time.time()
+#        runtime = end - start
+#        msg = "PV KMeans Classification Tooks {time} seconds to complete"
+#        print(msg.format(time=runtime)) 
+#        rpt.write(report)
+        rpt.writelines('\n*********the DecisionTree report************\n')
+        start = time.time()
+        report = pvDecisionTree(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV DecisionTree Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=1) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY, 1)
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=1) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=3) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY,3)
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=3) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the KNN(K=5) report************\n')
+        start = time.time()
+        report = pvKNN(trainX,testX,trainY,testY,5) 
+        end = time.time()
+        runtime = end - start
+        msg = "PV KNN(K=5) Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+#        rpt.writelines('\n*********the Bayes report************\n')
+#        start = time.time()
+#        report = pvBayes(trainX,testX,trainY,testY)
+#        end = time.time()
+#        runtime = end - start
+#        msg = "PV Bayes Classification Tooks {time} seconds to complete"
+#        print(msg.format(time=runtime)) 
+#        rpt.write(report)
+        rpt.writelines('\n*********the RandomForest report************\n') 
+        start = time.time()
+        report = pvRandomForest(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV RandomForest Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the ExtraTrees report************\n')
+        start = time.time()
+        report = pvExtraTreesClassifier(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV ExtraTrees Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)                
+        rpt.writelines('\n*********the GradientBoosting report************\n')
+        start = time.time()
+        report = pvGBDT(trainX,testX,trainY,testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV GradientBoosting Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime))         
+        rpt.write(report)
+        rpt.writelines('\n*********the XGBoosting report************\n')
+        start = time.time()
+        report = pvXBOOST(trainX, testX, trainY, testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV XGBoosting Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        rpt.writelines('\n*********the Bagging report************\n')
+        start = time.time()
+        report = pvBagging(trainX, testX, trainY, testY)
+        end = time.time()
+        runtime = end - start
+        msg = "PV Bagging Classification Tooks {time} seconds to complete"
+        print(msg.format(time=runtime)) 
+        rpt.write(report)
+        
+    #close report file
+    rpt.close()
+    return 'ok' 
+def total_report2():
+    precision=[]
+    recall=[]
+    f1=[]
+    method=[]
+
+    #get method and precision ,recall ,f1
+    with open(outPath) as f:
+        f_csv = csv.reader(f)
+        for row in f_csv:
+            if(len(row)>0):
+                if '***' in row[0]:
+                    method.append(row[0].split(' ')[1])
+                if 'avg' in row[0]:
+                    precision.append(float(row[0].split(' ')[9]))
+                    recall.append(float(row[0].split(' ')[15]))
+                    f1.append(float(row[0].split(' ')[21]))
+    #total:
+    results = pd.DataFrame()
+    results['Method'] = pd.DataFrame(data=method, columns=['Method'])
+    results['Precision'] = pd.DataFrame(data=precision, columns=['Precision'])
+    results['Recall'] = pd.DataFrame(data=recall, columns=['Recall'])
+    results['F1'] = pd.DataFrame(data=f1, columns=['F1'])
+    
+    #get average
+    print(results.groupby('Method').mean())
+    
+    results.groupby('Method').mean().to_csv(totalreportPath) 
 def total_report(fname):
     precision=[]
     recall=[]
@@ -559,5 +733,9 @@ if __name__ == '__main__':
             data = pd.read_csv(f, delimiter=',')
             pvKfoldValidation(data,kfold,fftname)
             total_report(fftname)
-    
+    if FI_analysis ==1:
+        data = pd.read_csv(FeaPath, delimiter=',')
+        pvKfoldValidation2(data,kfold)
+        total_report2()
+        
     

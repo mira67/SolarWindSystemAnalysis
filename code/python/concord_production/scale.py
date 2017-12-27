@@ -10,9 +10,15 @@ import glob
 
 #aggregation features
 #the raw signal
-inPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/'
+#inPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft/'
 #the normalized signal
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/'
+#outPath = '/Users/zhaoyingying/PVData/ADIbyCen/n_interval_fft_scale/'
+
+
+#adi raw signal
+inPath = '/Users/zhaoyingying/PVData/ADIbyCen/similarity_features/'
+#the normalized signal
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/similarity_features/similarity_features_scale/'
 
 flist = glob.glob(inPath+'*.csv')
 for f in flist:

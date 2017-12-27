@@ -35,10 +35,10 @@ FaultNum = 1034
 kfold = 4 # cross validation
 #inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesAmptitude.csv'
 inPath = '/Users/zhaoyingying/PVData/ADIbyCen/ADIALLTimeSeriesrenameType_rawsignal.csv'
-aggFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_features_scale.csv'
-outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/classification_report_agg.csv'
-totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/classification_total_agg.csv'
-FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/Agg_Fea_importance.csv'
+aggFeaPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_features.csv'
+outPath = '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_report.csv'
+totalreportPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_report_total.csv'
+FIPath= '/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/Agg_FI.csv'
 
 tsnePlotPath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_tsne_plot.csv'
 tsnePath='/Users/zhaoyingying/PVData/ADIbyCen/temporal_frq_features/agg_tsne.csv'
