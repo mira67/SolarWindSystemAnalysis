@@ -83,7 +83,7 @@ def queryStrData(hlxID, startDT,endDT, timeRg):
     db.close()
     return cbData
 
-#Linear Regression
+#Module: Linear Regression
 def strSlopeModel(Features,stringCurrent, estimator):
     '''
     multiple regression estimation methods
@@ -99,7 +99,15 @@ def strSlopeModel(Features,stringCurrent, estimator):
         print('Invalid Estimator')
     return lm
     
-#Theil-sen Regression    
+#Module: Extract hlx slope features
+def extractSlopeFea():
+    """
+    Grab daily slopes and put in dataframe
+    """
+    return  
+    
+#Module record hlx slope features to local storage
+
 
 # Partition Module: Identify Normal Data Clusters
 def dataPartition(currents,features):
@@ -183,7 +191,7 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
         
         #Normal data modeling
         norm_Features = sm.add_constant(norm_Features)
-        lm = strPowerModel(norm_Features,norm_Current)
+        lm = strSlopeModel(norm_Features,norm_Current,'simple')
         
         # The coefficients
         print('Coefficients: \n', lm.coef_)
@@ -249,14 +257,9 @@ def strFaultDetection(hlxID, strID, FeatureList, startDT,endDT):
     
 #Main
 def main():
-    dataPath = 'E:/myprojects/pv_detection/code/code/python/sandbox/testData_full.xlsx'
-    strInfo = pd.read_excel(dataPath).values.tolist()
-    #strings = map(str, strInfo)#seems only string list works for pool map
-    #print(strInfo)
-    
-    varScores = []
-    resScores = []
-    avgSlopes = []
+    # list of combiner boxes
+    hlx_info = pd.read_csv('E:/myprojects/pv_detection/data/concord_work/hlx_info_test.csv')
+    hlxList = hlx_info['combinerbox'];
     
     #for quick test
     #strInfo = strInfo[0:1]
