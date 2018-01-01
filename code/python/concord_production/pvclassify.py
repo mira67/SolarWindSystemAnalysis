@@ -15,6 +15,7 @@ import time
 kfold = 3 # cross validation
 inPath = 'E:/myprojects/pv_detection/code/python/smoothedTimeSeriesADI.csv'
 outPath = 'E:/myprojects/pv_detection/code/python/report.csv'
+
 w = 4
 
 #KNN class

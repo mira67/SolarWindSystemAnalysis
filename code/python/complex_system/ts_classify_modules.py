@@ -406,6 +406,7 @@ def fftTrans(current,Fs, window_size):
         
         #Y = np.fft.fft(y)/n # fft computing and normalization?
         Y = np.fft.fft(y_w) # fft computing and no normalization
+
         Y = Y[range(round(n/2))]
         Y = abs(Y)
         #expand numpy array
@@ -427,6 +428,7 @@ def fftTrans(current,Fs, window_size):
     '''
     
     #make the length of frq same as fft
+
     frq_rep = np.matlib.repmat(frq, 1,w_num+1).reshape(-1)
 
     return ws_Y, frq_rep

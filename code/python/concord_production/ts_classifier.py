@@ -19,7 +19,7 @@ class ts_classifier(object):
 		'''
 		for ind,i in enumerate(test):
 			if progress:
-				print str(ind+1)+' points classified'
+				print (str(ind+1)+' points classified')
 			min_dist=float('inf')
 			closest_seq=[]
 	
@@ -50,8 +50,8 @@ class ts_classifier(object):
 		DTW={}
     
 		if w:
-			w = max(w, abs(len(s1)-len(s2)))
-    
+
+			w = max(w, abs(len(s1)-len(s2)))   
 			for i in range(-1,len(s1)):
 				for j in range(-1,len(s2)):
 					DTW[(i, j)] = float('inf')
@@ -63,17 +63,20 @@ class ts_classifier(object):
 		        DTW[(-1, i)] = float('inf')
 		
 		DTW[(-1, -1)] = 0
+        
 	
 		for i in range(len(s1)):
 			if w:
-				for j in range(max(0, i-w), min(len(s2), i+w)):
+				for j in range(max(0, i-w), min(len(s2), i+w+1)):
 					dist= (s1[i]-s2[j])**2
-					DTW[(i, j)] = dist + min(DTW[(i-1, j)],DTW[(i, j-1)], DTW[(i-1, j-1)])
+					#print(dist)                    
+					DTW[(i, j)] = dist + min(DTW[(i-1, j)],DTW[(i, j-1)], DTW[(i-1, j-1)])					
+					#print(DTW[(i, j)])
 			else:
 				for j in range(len(s2)):
 					dist= (s1[i]-s2[j])**2
 					DTW[(i, j)] = dist + min(DTW[(i-1, j)],DTW[(i, j-1)], DTW[(i-1, j-1)])
-			
+		
 		return np.sqrt(DTW[len(s1)-1, len(s2)-1])
 	   
 	def LB_Keogh(self,s1,s2,r):

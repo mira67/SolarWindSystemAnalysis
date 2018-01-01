@@ -139,6 +139,16 @@ def StamptoTime(value):
     #转换成新的时间格式(2016-05-05 20:28:54)
     dt = dateArray.strftime("%Y-%m-%d %H:%M:%S")
     return dt
+
+def StamptoBJTime(value):
+    value = float(value)
+    epoch = 116444448000000000
+    timestamp = float(value - epoch) / 10 ** 7
+    dateArray = datetime.datetime.utcfromtimestamp(timestamp)
+    # 转换成新的时间格式(2016-05-05 20:28:54)
+    dt = dateArray.strftime("%Y-%m-%d %H:%M:%S")
+    return dt
+
 #标准时间转化为时间戳
 def TimetoStamp(value):
     value=str(value).split('.')[0]
@@ -180,8 +190,11 @@ def WNACDirCalc(WNAC_Dir):
                     return i
 
 if __name__ == '__main__':
-    print(StamptoTime(131491842000000000))
-    print(StamptoTime(131491848000000000))
-    print(StamptoTime(131491884000000000))
-    print(StamptoTime(131491890000000000))
+    # print(StamptoTime(131487912000000000))
+   # print TimetoStamp('2017-10-25 00:00:05')
+  #  print TimetoStamp('2017-10-25 00:00:00')
+    print (StamptoBJTime('131533632000000000'))
+ #   # print(StamptoTime(131491848000000000))
+    # print(StamptoTime(131491884000000000))
+    # print(StamptoTime(131491890000000000))
     

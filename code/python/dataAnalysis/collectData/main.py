@@ -1,9 +1,4 @@
 #-*- coding: UTF-8 -*-
-"""
-@function: download data collected from different PV systems
-
-
-"""
 import taskfiles.S27_20170725062335 as s27
 import taskfiles.S51_20170731153430 as s51
 import taskfiles.S53_20170731153508 as s53
@@ -34,23 +29,46 @@ import taskfiles.S407_20170816191009 as s407
 import taskfiles.S502_20170816191028 as s502
 from AzureTableHelper import ReadAzureTable
 import pandas as pd
-import dataprocess_cms as dp
+import os
+import datetime
+import time
+from data_processed import data_processed
+import threading
 
 
-stationDevice = s350.allDevice # need reverse,eg. shandongpingyuan code is 350, should generate instance s350.allDevices
-#choice pv systems
-stationName = 'pingyuan'
+stationDevice = s350.allDevice # need reverse,eg. shandongpingyuan code is 350, should generate instance s350.allDevice
+path = 'F:/PVData/' # need add path
+devicetypelist = [202] #201,202,203, type = int, need add device type code
 
-# add path for weather station
-WSpath = '/Users/zhaoyingying/PVData/FiveSecondsData/rawdata/'+stationName+'/weatherStation/' 
-#add path for combinerbox
-CBpath = '/Users/zhaoyingying/PVData/FiveSecondsData/rawdata/'+stationName+'/combierBox/' 
-#add path for converter
-CTpath = '/Users/zhaoyingying/PVData/FiveSecondsData/rawdata/'+stationName+'/converter/' 
-#201: converter , 202: combiner box, 203: weather station
-devicetypelist = [201,202,203]
-#get a time period of data
-datelists = ['2017-09-01 00:00:00','2017-09-01 23:59:59']
+date_duration = ['2017-06-13','2017-09-13']#UTC date
+# time_duration = ['20:00:00','12:00:00']#UTE time
+# delta_days = datetime.datetime.strptime(date_duration[1][:10], '%Y-%m-%d')-datetime.datetime.strptime(date_duration[0][:10], '%Y-%m-%d')
+# for day in range(delta_days.days):
+#     day_duration = [date_duration[0]]
+
+azReader = ReadAzureTable()
+# dataprocess = data_processed()
+
+
+def gen_datelist(date_duration1):
+    datelists = []
+    complexlist = []
+    delta_days = datetime.datetime.strptime(date_duration1[1], '%Y-%m-%d')-datetime.datetime.strptime(date_duration1[0], '%Y-%m-%d')
+    for day in range(delta_days.days):
+        begin = datetime.datetime.strptime(date_duration1[0], '%Y-%m-%d') + datetime.timedelta(days=day,hours=20)
+        begintime = datetime.datetime.strftime(begin,'%Y-%m-%d %H:%M:%S')
+        end = begin + datetime.timedelta(hours=16)
+        endtime = datetime.datetime.strftime(end,'%Y-%m-%d %H:%M:%S')
+        # if begin.month == end.month:
+        datelists.append([begintime,endtime])
+        # else:
+        #     complexlist.append([begintime,endtime])
+    return datelists
+        # print begintime,endtime
+
+
+def process_each_first_day(complexlist):
+    pass
 
 
 def selectData(deviceType):
@@ -63,42 +81,59 @@ def selectData(deviceType):
 
 
 def writeCsv(df,path,deviceName,date):
-    #create the ouput path
-    dp.mkdir(path)
-    #output to file
-    df.to_csv(path + deviceName + '_'+date + '.csv',index=False)
+    df.to_csv(path + '\\' + deviceName + '_'+date + '.csv',index=False)
 
 
 def start(deviceType,startTime,endTime):
-    azReader = ReadAzureTable()
     deviceList = selectData(deviceType)
+    # print deviceList
     for device in deviceList:
-        print('device[1]:'+device[1])
-        print('device[0]:'+device[0])
-        print(startTime)
-        print(endTime)
         df = azReader.readData(device[1], device[0], startTime, endTime)
-        deviceName = device[0] + 'M' + device[1]
+        if df is None:
+            print ('error,but pass')
+        else:
+            # df = dataprocess.hlx_processed(df=df)
+            deviceName = device[0] + 'M' + device[1]
+            stationName1,deviceName1,devicetypeName,deviceId \
+                = deviceName.split('M')[0],deviceName.split('M')[1],\
+                  deviceName.split('M')[2],deviceName.split('M')[3]
+            # print stationName1,deviceName1,devicetypeName,deviceId
+            if os.path.exists(path+'\\'+str(stationName1)+'\\'+str(deviceName1)+'\\'+endTime[:10]):
+                path1 = path+'\\'+str(stationName1)+'\\'+str(deviceName1)+'\\'+endTime[:10]
+                writeCsv(df=df, path=path1, deviceName=deviceName, date=endTime[:10])
+            else:
+                os.makedirs(path+'\\'+str(stationName1)+'\\'+str(deviceName1)+'\\'+endTime[:10])
+                path2 = path + '\\' + str(stationName1) + '\\' + str(deviceName1) + '\\' + endTime[:10]
+                writeCsv(df=df, path=path2, deviceName=deviceName, date=endTime[:10])
 
-        #choice different out put path for different device
-        if deviceType == 201:
-            path = CTpath
-        if deviceType == 202:
-            path = CBpath
-        if deviceType == 203:
-            path = WSpath
-        writeCsv(df=df,path=path,deviceName=deviceName,date=endTime[:10])
+
+def multithread():
+    pass
 
 if __name__ == '__main__':
-   # start(201,'2017-07-09 00:00:00','2017-07-09 01:00:00')
+    # start(202,'2017-08-01 00:00:00','2017-08-01 01:00:00')
+    starttime = time.time()
+    threads = []
+    datelists = gen_datelist(date_duration)
+    for device in devicetypelist:
+        for num in range(len(datelists)):
+            threads.append(threading.Thread(target=start,args=(device,datelists[num][0],datelists[num][1])))
 
-    for idx in range(len(devicetypelist)):
-        deviceType = devicetypelist[idx]
-        startTime = datelists[0]
-        endTime = datelists[1]
-        print(startTime)
-        print(endTime)
-        start(deviceType,startTime,endTime)    
+    for t in threads:
+        t.setDaemon(True)
+        t.start()
+    t.join()
 
-   # df = azReader.readData('3', '350M201M2', '2017-07-09 00:00:00', '2017-07-09 01:00:00')
+    # for datedetail in datelists:
+    #     start(deviceType=202,startTime=datedetail[0],endTime=datedetail[1])
+    endtime = time.time()
+    print ('download Data use :%s sencods'%(endtime-starttime))
+
+    # print delta_days.days
+    # datelist,complist = gen_datelist(date_duration)
+    # print datelist,complist
+
+
+
+
 
