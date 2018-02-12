@@ -42,6 +42,7 @@ def preProcessData(inPath,outPath):
     
     '''
     medfiltLen = 61 
+    smlen = 31
     flist = glob.glob(inPath+'*.csv')        
     for f in flist:
         df_org = pd.read_csv(f)
@@ -62,25 +63,17 @@ def preProcessData(inPath,outPath):
                         (df_org['V'] < VRg[1]) & (df_org['V'] > VRg[0])]
         
         # med filt using one hour data
-        df.set_index(['data_date'], inplace=True)
-        df.drop(['Unnamed: 0'], axis=1)
-        print(df)
-        df = df.loc[medfiltLen:-medfiltLen,:].rolling(window=medfiltLen,center=True).median()
-        
-#        df['Fs2m'] = df.iloc[medfiltLen:-medfiltLen,['Fs2m']].rolling(window=medfiltLen,center=True).median()
-#        df['I1m'] = df.iloc[medfiltLen:-medfiltLen,['I1m']].rolling(window=medfiltLen,center=True).median()
-#        df['I2m'] = df.iloc[medfiltLen:-medfiltLen,['I2m']].rolling(window=medfiltLen,center=True).median()
-#        df['V1m'] = df.iloc[medfiltLen:-medfiltLen,['V1m']].rolling(window=medfiltLen,center=True).median()
-#        df['T0'] = df.iloc[medfiltLen:-medfiltLen,['T0']].rolling(window=medfiltLen,center=True).median()
-#        df['Wd'] = df.iloc[medfiltLen:-medfiltLen,['Wd']].rolling(window=medfiltLen,center=True).median()
-#        df['Wv'] = df.iloc[medfiltLen:-medfiltLen,['Wv']].rolling(window=medfiltLen,center=True).median()
-#        df['Sd'] = df.iloc[medfiltLen:-medfiltLen,['Sd']].rolling(window=medfiltLen,center=True).median()
-#        df['I'] = df.iloc[medfiltLen:-medfiltLen,['I']].rolling(window=medfiltLen,center=True).median()
-#        df['V'] = df.iloc[medfiltLen:-medfiltLen,['V']].rolling(window=medfiltLen,center=True).median()
-        
+        columns =['Fs2m','I1m','I2m','V1m','T0','Wd','Wv','Sd','I','V']
+        tmpdf = df.copy()
+        print(tmpdf.iloc[0:smlen,:])
+        df.loc[:,columns] = df.loc[:,columns].rolling(window=medfiltLen,center=True).median()
+        print(tmpdf.iloc[0:smlen,:])
+        df.iloc[0:smlen,:] = tmpdf.iloc[0:smlen,:]
+        df.iloc[-smlen:,:] = tmpdf.iloc[-smlen:,:]     
         
         print(invertName+' has been processed sucessfully!')
         df.to_csv(outPath+invertName+'.csv',index = False)
+        
 
     
 if __name__ == "__main__":
