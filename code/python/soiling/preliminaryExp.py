@@ -40,13 +40,11 @@ def alignNBQandQXZ():
     #qxz data
     nbq_qx = pd.read_csv(qxz)
     nbq_qx['Date'] = pd.to_datetime(nbq_qx['Date'], format='%Y-%m-%d')
-    #nbq_qx.set_index(['Date'], inplace=True)
 
   
     #nbq data
     all_nbq = pd.read_csv(allnbqData)
-    all_nbq['Date'] = pd.to_datetime(all_nbq['Date'],format='%Y-%m-%d')
-    #all_nbq.set_index(['Date'], inplace=True)  
+    all_nbq['Date'] = pd.to_datetime(all_nbq['Date'],format='%Y-%m-%d') 
 
     
     merged = pd.merge(all_nbq, nbq_qx, on=['Date'])
@@ -80,14 +78,11 @@ def getDailySolarRad():
     get daily solar radiation from tile fuzhaoyi
     '''
     #from any inverter
-    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/S01-NBA.csv'
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
     df = pd.read_csv(filePath)
     
     #convert datetime to date
-    df['data_date'] = pd.to_datetime(df['data_date'], format='%Y-%m-%d')
-    dateList = []
-    for i in range(df.shape[0]):
-        dateList.append(datetime.datetime.strptime(df.loc[i,'data_date'].strftime("%Y-%m-%d"), "%Y-%m-%d").date())
+    dateList = [item[0:10] for item in df['data_date'].values]
     df['Date'] = dateList
     df['Pe_WeaStation'] = df['I1m'] * df['V1m']
     df = df.groupby(['Date']).sum()
@@ -97,10 +92,10 @@ def getDailySolarRad():
 
 def avgTcell():
     '''
-    caculated the average Temperature of cell in weather station in 2016.
+    caculated the average Temperature of cell in weather station in 2016: 30.160829562814
     
     '''
-    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/S01-NBA.csv'
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
 
     
     numDays = len(dayList)
@@ -109,9 +104,7 @@ def avgTcell():
     df = df_org[(df_org['data_date'] >= str(dateList[0]) + ' ' + timeRg[0]) &
                         (df_org['data_date'] < str(dateList[-1]) + '' + timeRg[1])]
     df = df.loc[:,['Wv','T0','Fs2m']]
-    #emperical value obtained from the data, wind speed range in pingyuan is [0.50], ambient temp is in: [-10,50]
-    #fs2m is [0,1000]
-    df = df[ (df['Wv']> 0.0) & (df['Wv']<50.0) &   (df['T0']>-10.0) &  (df['T0']<50.0) & (df['Fs2m']>0.0) & (df['Fs2m'] <1000.0)  ]
+
     df['fv'] = 17.1+ 5.7 * df['Wv']
     alphatau = 0.9
     ita = 0.1545
@@ -131,9 +124,24 @@ def dailyCPR():
     #get the average cell temperature
     Avg_Tcell = avgTcell()
     
-    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/S01-NBA.csv'
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
     df_org = pd.read_csv(filePath)
+    
+    startDTModel = '2016-01-01'
+    endDTModel = '2017-03-26'
+    timeRg = ['05:30', '19:30']  # use pandas to get data within this range
+    
+    # date list
+    start = datetime.datetime.strptime(startDTModel, "%Y-%m-%d").date()
+    end = datetime.datetime.strptime(endDTModel, "%Y-%m-%d").date()
+    dateList = [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
+
+    dayList = []
+    for day in dateList:
+        dayList.append(str(day)) 
+    
     numDays = len(dayList)
+    print(dayList)
     CPRArray = np.zeros((numDays, 1))
     dailyinput = np.zeros((numDays, 1))
 
@@ -142,12 +150,6 @@ def dailyCPR():
         
         df = df_org[(df_org['data_date'] >= str(day) + ' ' + timeRg[0]) &
                         (df_org['data_date'] < str(day) + '' + timeRg[1])]
-            
-        #get tcell
-        df = df[ (df['Wv']> 0.0) & (df['Wv']<50.0) &   (df['T0']>-10.0) &  (df['T0']<50.0) & (df['Fs2m']>0.0) & (df['Fs2m'] <1000.0)  ]
-        
-        #in the range of short current and open circuit voltage
-        df = df[ (df['I1m']> 0.0) & (df['I1m']<8.79) &   (df['V1m']>0.0) &  (df['V1m']<45.30) ]
         
         df['fv'] = 17.1+ 5.7 * df['Wv']
         alphatau = 0.9
@@ -156,10 +158,7 @@ def dailyCPR():
         Tr= 25
     
         df['Tcell'] = (df['fv'] * df['T0'] + df['Fs2m']*(alphatau - ita -beta*ita*Tr))  / (df['fv']-beta*ita*df['Fs2m'])
-        #print(df['Tcell'])
-            
-            
-            
+             
         df = df.drop(['data_date'], axis=1)
             # print('add columns')
         df['EN'] = df['I1m'] * df['V1m']/1000
@@ -190,19 +189,10 @@ def dailyCPR():
     
     
     dailyCPR['dailyinput'] = dailyinput
-    # med filtering
-
-    #dailyCPR['dailyinput'] = dailyCPR['dailyinput'].rolling(window=10,center=True).median()
     
     dailyCPR.to_csv('/Users/zhaoyingying/surfacesoiling/data/dailyCPR.csv', sep=',', header=True)
-    print('Completed computing slopes')
-    
-    #need to remove outlier
-    
-    
- 
-                
-    
+    print('Completed computing daily CPR')
+
 
 if __name__ == "__main__":
     
