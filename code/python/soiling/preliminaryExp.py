@@ -25,6 +25,7 @@ allnbqData = '/Users/zhaoyingying/surfacesoiling/data/Inv_GPI_pingyuan.csv'
 qxz = '/Users/zhaoyingying/surfacesoiling/data/pingyuan_weather_station2016.csv'
 qxz_nqb = '/Users/zhaoyingying/surfacesoiling/data/qxz_nqb.csv'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
+cleanlistPath = '/Users/zhaoyingying/surfacesoiling/data/cleaninglist.csv'
 
 startDTModel = '2016-01-01'
 endDTModel = '2017-01-01'
@@ -251,7 +252,55 @@ def boxplot(field):
     plt.savefig(figPath + 'Fs2mMonthlyVar.png', dpi=300)
     plt.show()
 
+def cleaninglist(outPath):
+    '''
+    get cleaning list for each inverter
+    the number day of dust accumulation
+    
+    '''
+    #get date list
+    dayList = tool.getDayList()
+    
+    #get cleaning list for each inverter
+    nbqList = tool.getnbqList()
+    
+    df = pd.DataFrame(columns=nbqList)
+    df['Date'] = dayList
+    
+    for idx, nbqname in enumerate(nbqList):
+        #get cleaning record
+        nbq_qx = pd.read_csv(qxjl)
+        #find the inverter
+        nbq_qx = nbq_qx[nbq_qx['nbqno'] == nbqname]  # reorganize code and make a flow
+     
+        
+        #get cleaning list for the invert
+        cleaningList = [item[0:10] for item in nbq_qx['qxdate'].values]
+        
+        
+        startIDX = 0
+        #calculate the number of dust accumulation
+        for jdx, riqi in enumerate(cleaningList):
+            
+            #get end index
+            endIDX = df[df.Date == riqi].index.tolist()[0]
+            dustacclist = range(0, endIDX-startIDX+1)
+            
+            
+            df.loc[startIDX:endIDX,nbqname] = dustacclist 
+            #next cleaning event
+            startIDX = endIDX
+            #startDate = riqi
+        
+        
+        #for the last cleaning record
+        endIDX = len(dayList)-1
+        dustacclist = range(0, endIDX-startIDX+1)
+        df.loc[startIDX:endIDX,nbqname] = dustacclist       
+    df.to_csv(outPath)
 
+        
+    
 if __name__ == "__main__":
     
     #alignNBQandQXZ()
@@ -266,7 +315,10 @@ if __name__ == "__main__":
     
     #windRose()
     
-    boxplot(field = 'Fs2m')
+   # boxplot(field = 'Fs2m')
+   
+   #get cleaning list for each inverter
+   cleaninglist(cleanlistPath)
     
 
     

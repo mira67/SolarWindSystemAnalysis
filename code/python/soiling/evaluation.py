@@ -21,6 +21,7 @@ cprPath = '/Users/zhaoyingying/surfacesoiling/data/dailyCPR.csv'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 mrePath = '/Users/zhaoyingying/surfacesoiling/data/results/mre/mre.csv'
 multiPowers = '/Users/zhaoyingying/surfacesoiling/data/results/multipowers/'
+cleanlistPath = '/Users/zhaoyingying/surfacesoiling/data/cleaninglist.csv'
 
 panelNum = 16
 invertnum = 74
@@ -160,7 +161,13 @@ def getpowers(outPath,invertname):
     
     #get soiling rate for the inverter
     dustRate = tool.soilingrate(invertname, method='dustMedian')   
-    new_merged['Pe_slope'] = new_merged['Pr'] * new_merged['Fs2m']*(1+dustRate)
+    
+    clean_df = pd.read_csv(cleanlistPath).loc[:,['Date',invertname]]    
+    clean_df.set_index(['Date'], inplace=True)
+    new_merged = pd.merge(new_merged,clean_df,left_index=True, right_index=True, how='inner')  
+    
+    #get predict power using slope method
+    new_merged['Pe_slope'] = new_merged['Pr'] * new_merged['Fs2m']*((1+dustRate)**new_merged[invertname])
     new_merged.to_csv(outPath+invertname+'.csv')
 
 
@@ -188,8 +195,8 @@ def getmultipowers(outPath,invertname):
     #get daily factors    
     df =sum_df.loc[:,['Fs2m','Pe_cleaning','Pe_syn']]
     df['Sd'] = avg_df['Sd']
-    df['Wv'] = avg_df['Wv']
-    df['Wd'] = avg_df['Wd']
+    #df['Wv'] = avg_df['Wv']
+    #df['Wd'] = avg_df['Wd']
     df['T0'] = avg_df['T0']
     print('get estimated power from weather satation data sucessfully!')
     
@@ -233,7 +240,8 @@ def getmultipowers(outPath,invertname):
      #get the estimated power by using multislope method
     slope_file = tool.getnbqFile(multislopePath, invertname)
     slope_df = pd.read_csv(slope_file)   
-    slope_df = slope_df.loc[:,['Pr', 'data_date','PrSd','PrWv','PrWd','PrT0']]
+    #slope_df = slope_df.loc[:,['Pr', 'data_date','PrSd','PrWv','PrWd','PrT0']]
+    slope_df = slope_df.loc[:,['Pr', 'data_date','PrSd','PrT0']]
     dateList = [item[0:10] for item in slope_df['data_date'].values]
     slope_df['Date'] = dateList  
      
@@ -242,8 +250,9 @@ def getmultipowers(outPath,invertname):
     new_merged = pd.merge(merged, slope_df,left_index=True, right_index=True, how='inner')
     
     dustRate = tool.soilingrate(invertname, method='dustMedian')
-    new_merged['Pe_slope'] = (1+dustRate)*(new_merged['Pr'] * new_merged['Fs2m'] + new_merged['PrSd'] * new_merged['Sd'] + new_merged['PrWv'] * new_merged['Wv'] + new_merged['PrWd'] * new_merged['Wd'] + new_merged['PrT0'] * new_merged['T0']) 
-     
+    #new_merged['Pe_slope'] = (1+dustRate)*(new_merged['Pr'] * new_merged['Fs2m'] + new_merged['PrSd'] * new_merged['Sd'] + new_merged['PrWv'] * new_merged['Wv'] + new_merged['PrWd'] * new_merged['Wd'] + new_merged['PrT0'] * new_merged['T0']) 
+    new_merged['Pe_slope'] = (1+dustRate)*(new_merged['Pr'] * new_merged['Fs2m'] + new_merged['PrSd'] * new_merged['Sd']  + new_merged['PrT0'] * new_merged['T0']) 
+   
      #get the estimated power by using CPR-based method
      
      
@@ -256,14 +265,14 @@ if __name__ == "__main__":
     allnbq = tool.getnbqList()   
     for idx, nbq in enumerate(allnbq):
         getpowers(siglepowers,nbq)
-    MRE(siglepowers)
+    MRE(siglepowers,method = 'single')
     
     #get powers affected by multiple factors
 #    allnbq = tool.getnbqList()   
 #    for idx, nbq in enumerate(allnbq):
 #        getmultipowers(multiPowers,nbq)
 #
-#    MRE(multiPowers)
+#    MRE(multiPowers,method = 'multi')
     
     
     

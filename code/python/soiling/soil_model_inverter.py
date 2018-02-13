@@ -250,9 +250,12 @@ def extractMultiSlopeFea(df_org,fname):
     '''
     # grab daily slopes -> upgrade code to spark later for multiple columns computing in parallel
     # create an array to store slopes for each strings
+    features = 3 # solar radiation, temperature, humidity
+    #features = 5 # solar radiation, temp, humidity, wind speed , and wind direction
+    
     numDays = len(dayList)
     print('there are '+str(numDays)+' days in total.')
-    slopeArray = np.zeros((numDays, 5))
+    slopeArray = np.zeros((numDays, features))
     try:
         for idx, day in enumerate(dateList):
             # query data
@@ -272,8 +275,10 @@ def extractMultiSlopeFea(df_org,fname):
             if df.shape[0] >= 100:
                 # all strings currents
                 df_power = df.P
+                
                 # feature data:'Fs2m','Sd','Wd','Wv','T0']
-                df_fea = df.loc[:,['Fs2m','Sd','Wd','Wv','T0']].values
+                #df_fea = df.loc[:,['Fs2m','Sd','Wd','Wv','T0']].values
+                
                 # feature data:'Fs2m','Sd','T0']
                 df_fea = df.loc[:,['Fs2m','Sd','T0']].values
 
@@ -290,7 +295,8 @@ def extractMultiSlopeFea(df_org,fname):
                     print('regression fail')
 
         # obtain dataframe and record to file
-        slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrWd','PrWv','PrT0'])
+        #slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrWd','PrWv','PrT0'])
+        slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrT0'])
         slopeDF['data_date'] = pd.DataFrame(data=dayList)
         filename = MultiSlopePath + fname+'slope_ransac' + '.csv'
         slopeDF.to_csv(filename, sep=',', header=True)

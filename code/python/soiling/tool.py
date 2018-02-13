@@ -12,10 +12,23 @@ import numpy as np
 from pandas.plotting import scatter_matrix
 import matplotlib.pyplot as plt
 from sklearn import linear_model
+import datetime
 
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 dustRatePath = '/Users/zhaoyingying/surfacesoiling/data/dustRate.csv'
+def getDayList():
+    startDTModel = '2016-01-01'
+    endDTModel = '2017-03-26'
+    
+    # date list
+    start = datetime.datetime.strptime(startDTModel, "%Y-%m-%d").date()
+    end = datetime.datetime.strptime(endDTModel, "%Y-%m-%d").date()
+    dateList = [start + datetime.timedelta(days=x) for x in range(0, (end - start).days)]
 
+    dayList = []
+    for day in dateList:
+        dayList.append(str(day)) 
+    return dayList
 def getnbqList():
     '''
     get invert list for the PV site

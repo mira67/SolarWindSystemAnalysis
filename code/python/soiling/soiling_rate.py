@@ -314,6 +314,6 @@ if __name__ == "__main__":
 #    nbqData = pd.read_csv(nbqPath + 'S01-NBA.csv')
 #    nbqData['P'] = nbqData['I'] * nbqData['V']
 #    optGPI = NewOptimalGPI(nbqData)
-    method= 'single'
     
+    method= 'single'  
     countdust(singleslopePath,method)

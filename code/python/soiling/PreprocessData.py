@@ -56,8 +56,8 @@ def preProcessData(inPath,outPath):
                         (df_org['I2m'] < I2mRg[1]) & (df_org['I2m'] > I2mRg[0]) &
                         (df_org['V1m'] < V1mRg[1]) & (df_org['V1m'] > V1mRg[0]) &
                         (df_org['T0'] < tempRg[1]) & (df_org['T0'] > tempRg[0]) &
-#                        (df_org['Wd'] < WdRg[1]) & (df_org['Wd'] > WdRg[0]) &
-#                        (df_org['Wv'] < WvRg[1]) & (df_org['Wv'] > WvRg[0]) &
+                        (df_org['Wd'] < WdRg[1]) & (df_org['Wd'] > WdRg[0]) &
+                        (df_org['Wv'] < WvRg[1]) & (df_org['Wv'] > WvRg[0]) &
                         (df_org['Sd'] < SdRg[1]) & (df_org['Sd'] > SdRg[0]) &
                         (df_org['I'] < IRg[1]) & (df_org['I'] > IRg[0]) &
                         (df_org['V'] < VRg[1]) & (df_org['V'] > VRg[0])]

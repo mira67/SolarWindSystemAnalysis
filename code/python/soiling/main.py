@@ -24,10 +24,11 @@ siglepowers = '/Users/zhaoyingying/surfacesoiling/data/results/siglepowers/'
 multiPowers = '/Users/zhaoyingying/surfacesoiling/data/results/multipowers/'
 cprPath = '/Users/zhaoyingying/surfacesoiling/data/dailyCPR.csv'
 mrePath = '/Users/zhaoyingying/surfacesoiling/data/results/mre/mre.csv'
+cleanlistPath = '/Users/zhaoyingying/surfacesoiling/data/cleaninglist.csv'
 
-extSlope = True
+extSlope = False
 getSoilRate = False
-eva = False
+eva = True
 
 
 
@@ -40,8 +41,8 @@ if __name__ == "__main__":
             nbqname = os.path.basename(f)
             nbqData = pd.read_csv(f, delimiter=',')
             nbqData = nbqData.fillna(method='ffill')
-            soil_model_inverter.extractSlopeFea(nbqData,nbqname)
-            #soil_model_inverter.extractMultiSlopeFea(nbqData,nbqname)
+            #soil_model_inverter.extractSlopeFea(nbqData,nbqname)
+            soil_model_inverter.extractMultiSlopeFea(nbqData,nbqname)
         
     #get soiling rate
     if getSoilRate == True:
@@ -52,8 +53,8 @@ if __name__ == "__main__":
     if eva == True:
         allnbq = tool.getnbqList()   
         for idx, nbq in enumerate(allnbq):
-            evaluation.getpowers(siglepowers,nbq)
+            #evaluation.getpowers(siglepowers,nbq)
             evaluation.getmultipowers(multiPowers,nbq)
-        evaluation.MRE(siglepowers)
-        evaluation.MRE(multiPowers)
+        #evaluation.MRE(siglepowers,method = 'single')
+        evaluation.MRE(multiPowers,method = 'multi')
     
