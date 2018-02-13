@@ -12,6 +12,11 @@ import numpy as np
 import tool
 from scipy.signal import medfilt
 from pandas import rolling_median
+import xlrd
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+from windrose import WindroseAxes
+import matplotlib.cm as cm
 
 
 
@@ -19,6 +24,7 @@ qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
 allnbqData = '/Users/zhaoyingying/surfacesoiling/data/Inv_GPI_pingyuan.csv'
 qxz = '/Users/zhaoyingying/surfacesoiling/data/pingyuan_weather_station2016.csv'
 qxz_nqb = '/Users/zhaoyingying/surfacesoiling/data/qxz_nqb.csv'
+figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 
 startDTModel = '2016-01-01'
 endDTModel = '2017-01-01'
@@ -166,32 +172,84 @@ def dailyCPR():
         deta = -0.43
         Gstc = 1000 #w/m^2
         df['G_POA'] = df['Fs2m']
-        Pstc = 300.0/1000.0
-    
+        Pstc = 300.0/1000.0   
         df['input']= Pstc * ( df['G_POA']/Gstc) * (1- (deta/100) * (Avg_Tcell- df['Tcell']))
 
-        
-        #print('computing...', df.shape)
         if df.shape[0] >= 100:
             CPRArray[idx] = df['EN'].sum() / df['input'].sum()
             dailyinput[idx] = df['input'].sum()
     
     dailyCPR = pd.DataFrame(data=CPRArray, columns=['CPR'])
     dailyCPR['Date'] = pd.DataFrame(data=dayList)
- 
-    
+
         #remove outliers
     med_cpr, upper = tool.removeOutliers(dailyCPR.CPR, 1)
-    #print(med_cpr)
-
-    dailyCPR['CPR'] = med_cpr
-    
-    
-    
+    dailyCPR['CPR'] = med_cpr  
     dailyCPR['dailyinput'] = dailyinput
     
     dailyCPR.to_csv('/Users/zhaoyingying/surfacesoiling/data/dailyCPR.csv', sep=',', header=True)
     print('Completed computing daily CPR')
+
+
+def new_axes():
+    fig = plt.figure(figsize=(4, 4), dpi=80, facecolor='w', edgecolor='w')
+    rect = [0, 0, 1, 1]
+    ax = WindroseAxes(fig, rect, axisbg='w')
+    fig.add_axes(ax)
+    return ax
+#...and adjust the legend box
+def set_legend(ax):
+    l = ax.legend(shadow=False, bbox_to_anchor=[1, 0])
+    plt.setp(l.get_texts(), fontsize=12)
+
+
+def windRose():
+    '''
+    plot wind rose for pingyuan site in 2016
+    '''
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
+
+    numDays = len(dayList)
+    print('there are '+str(numDays)+' days in total.')
+    df_org = pd.read_csv(filePath)
+    df = df_org[(df_org['data_date'] >= str(dateList[0]) + ' ' + timeRg[0]) &
+                        (df_org['data_date'] < str(dateList[-1]) + '' + timeRg[1])]
+    df = df.loc[:,['Wv','Wd']]
+    tool.windrose(df, dirn='Wd', speed='Wv', loc_0 = 'N', loc_90='E')
+    tool.windrose_cbar()
+
+def boxplot(field):
+    '''
+    plot monthly box figure for solar radiation, hd, t0 in pingyuan site in 2016
+    '''
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
+
+    numDays = len(dayList)
+    print('there are '+str(numDays)+' days in total.')
+    df_org = pd.read_csv(filePath)
+    df = df_org[(df_org['data_date'] >= str(dateList[0]) + ' ' + timeRg[0]) &
+                        (df_org['data_date'] < str(dateList[-1]) + '' + timeRg[1])]
+    
+    df = df.loc[:,['data_date','Fs2m','T0','Sd']]
+    
+    #monthly
+    datelist = [item[0:7] for item in df['data_date'].values]
+    df['Date']= datelist
+    del df['data_date']
+    
+    new_df = df.pivot(columns='Date', values=field)
+
+#    #boxplot   
+    new_df.boxplot(sym='r*',patch_artist=True)       
+    plt.xlabel('Month')
+    plt.xticks(rotation=30)
+    #plt.ylabel('Humidity')
+    #plt.ylabel('Ambient Temperature (℃)')
+    plt.ylabel('Solar Radiation (W/m^2)')
+    plt.subplots_adjust(left=0.18, wspace=0.25, hspace=0.25,bottom=0.20, top=0.91)
+
+    plt.savefig(figPath + 'Fs2mMonthlyVar.png', dpi=300)
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -204,7 +262,11 @@ if __name__ == "__main__":
     
     #avgTcell()
     
-    dailyCPR()
+    #dailyCPR()
+    
+    #windRose()
+    
+    boxplot(field = 'Fs2m')
     
 
     
