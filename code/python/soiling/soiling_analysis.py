@@ -19,7 +19,7 @@ allpowerPath = '/Users/zhaoyingying/surfacesoiling/data/results/'
 qxzclean = '/Users/zhaoyingying/surfacesoiling/data/qxzclean.csv'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
-resPath = '/Users/zhaoyingying/surfacesoiling/data/inverter/'
+resPath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/'
 pmfile = '/Users/zhaoyingying/surfacesoiling/data/DezhouPM25.csv'
 corPath = '/Users/zhaoyingying/surfacesoiling/data/cor/'
 
@@ -186,6 +186,7 @@ def analyzeCor():
     # plt.legend()
     plt.xlabel('Power of Inverters and Weather Station')
     plt.ylabel('Correlation')
+    plt.subplots_adjust(left=0.18, wspace=0.25, hspace=0.25,bottom=0.20, top=0.80)
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
            ncol=2, mode="expand", borderaxespad=0.)
     plt.savefig(figPath  + 'Totalcorrelation.png', dpi=300)
@@ -220,5 +221,5 @@ if __name__ == "__main__":
     #soilingVar()
     #alignCleanqxz()
     #correlation()
-    #analyzeCor()
-    correlationPM25()
+    analyzeCor()
+    #correlationPM25()

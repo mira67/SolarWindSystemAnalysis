@@ -13,8 +13,8 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
-invertPath= '/Users/zhaoyingying/surfacesoiling/data/inverter/'
-singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/ransac/'
+invertPath= '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/'
+singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/singleransac/'
 multislopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/multiransac/'
 siglepowers = '/Users/zhaoyingying/surfacesoiling/data/results/siglepowers/'
 cprPath = '/Users/zhaoyingying/surfacesoiling/data/dailyCPR.csv'
@@ -25,7 +25,7 @@ multiPowers = '/Users/zhaoyingying/surfacesoiling/data/results/multipowers/'
 panelNum = 16
 invertnum = 74
 
-def MRE(powerPath):
+def MRE(powerPath,method):
     '''
     get power's mean relative error of true power and estimatied powers by different methods: gpi, cpr, weather-station
     '''
@@ -75,7 +75,7 @@ def MRE(powerPath):
 
 
         
-    plt.savefig(figPath + 'mre.png', dpi=300)
+    plt.savefig(figPath + method+'mre.png', dpi=300)
     plt.show() 
         
     plt.close()
@@ -88,21 +88,27 @@ def getpowers(outPath,invertname):
 
     '''
     # get powers from weather satation methods, it is the same for all inverters
-    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/S01-NBA.csv'
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
     df = pd.read_csv(filePath)
     df.fillna(method='ffill')
     
     #convert datetime to date: 
     
-    dateList = [item[0:10] for item in df['data_date'].values]
+    dateList = [item[0:10] for item in df['data_date'].values]  
     df['Date'] = dateList
     df['Pe_cleaning'] = df['I1m'] * df['V1m']
     df['Pe_syn'] = df['I2m'] * df['V1m']
-    df = df.groupby(['Date']).sum()
-    df =df.loc[:,['Fs2m','Pe_cleaning','Pe_syn']]
+    sum_df = df.groupby(['Date']).sum()
+    avg_df = df.groupby(['Date']).mean()
+
+    #get daily factors    
+    df =sum_df.loc[:,['Fs2m','Pe_cleaning','Pe_syn']]
+    df['Sd'] = avg_df['Sd']
+    df['Wv'] = avg_df['Wv']
+    df['Wd'] = avg_df['Wd']
+    df['T0'] = avg_df['T0']
     print('get estimated power from weather satation data sucessfully!')
     
-    #get powers from GPI
     
     #get the true power for the  inverter 
     file = tool.getnbqFile(invertPath,invertname)
@@ -136,11 +142,10 @@ def getpowers(outPath,invertname):
     cpr_df = cpr_df.loc[:,['dailyinput', 'CPR','Date']]
     cpr_df['Pe_cpr'] = cpr_df['dailyinput']*cpr_df['CPR']*cuanNum*panelNum*1000*(1+dustRate)
     dateList = [item[0:10] for item in cpr_df['Date'].values]
+    cpr_df['Date'] = dateList
     cpr_df = cpr_df.groupby(['Date']).sum()
     merged = pd.merge(merged, cpr_df,left_index=True, right_index = True, how='inner')
-    
-    
-    
+
     
 
     #get the estimated power by using slope method
@@ -154,15 +159,12 @@ def getpowers(outPath,invertname):
     new_merged = pd.merge(merged, slope_df,left_index=True, right_index=True, how='inner')
     
     #get soiling rate for the inverter
-    dustRate = tool.soilingrate(invertname, method='dustMedian')
-
-    
+    dustRate = tool.soilingrate(invertname, method='dustMedian')   
     new_merged['Pe_slope'] = new_merged['Pr'] * new_merged['Fs2m']*(1+dustRate)
-    
-    #get the estimated power by using CPR-based method
-    
-    
     new_merged.to_csv(outPath+invertname+'.csv')
+
+
+
 
 def getmultipowers(outPath,invertname):
     '''
@@ -170,7 +172,7 @@ def getmultipowers(outPath,invertname):
 
     '''
     # get powers from weather satation methods, it is the same for all inverters
-    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/S01-NBA.csv'
+    filePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/S01-NBA.csv'
     df = pd.read_csv(filePath)
     df.fillna(method='ffill')
     
@@ -251,17 +253,17 @@ def getmultipowers(outPath,invertname):
 if __name__ == "__main__":
     
     
-#    allnbq = tool.getnbqList()   
-#    for idx, nbq in enumerate(allnbq):
-#        getpowers(siglepowers,nbq)
-#    MRE(siglepowers)
-    
-    #get powers affected by multiple factors
     allnbq = tool.getnbqList()   
     for idx, nbq in enumerate(allnbq):
-        getmultipowers(multiPowers,nbq)
-
-    MRE(multiPowers)
+        getpowers(siglepowers,nbq)
+    MRE(siglepowers)
+    
+    #get powers affected by multiple factors
+#    allnbq = tool.getnbqList()   
+#    for idx, nbq in enumerate(allnbq):
+#        getmultipowers(multiPowers,nbq)
+#
+#    MRE(multiPowers)
     
     
     

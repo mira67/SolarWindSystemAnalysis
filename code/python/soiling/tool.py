@@ -30,13 +30,15 @@ def getnbqFile(filePath, nbqName):
     
     '''
 
-    flist = glob.glob(filePath+'*.csv')        
+    flist = glob.glob(filePath+'*.csv')  
+    f= ''   
+    print(nbqName)
+    print(filePath)
     for f in flist:
         filename = os.path.basename(f)[0:7]
         if filename == nbqName:
             break 
     print('find the file sucessfully:')
-    print(filename)
     return f
 def removeOutliers(a, outlierConstant):
     

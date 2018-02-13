@@ -49,8 +49,8 @@ Fs2mRg = [50,1000]
 WdRg = [0,365]
 WvRg = [0,50]
 SdRg = [0,100]
-resPath = '/Users/zhaoyingying/surfacesoiling/data/inverter/'
-singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/'
+resPath = '/Users/zhaoyingying/surfacesoiling/data/inverter/processed/'
+singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/singleransac/'
 MultiSlopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/multiransac/'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
@@ -234,7 +234,7 @@ def extractSlopeFea(df_org,fname):
         # obtain dataframe and record to file
         slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr'])
         slopeDF['data_date'] = pd.DataFrame(data=dayList)
-        filename = resPath + fname+'slope_ransac' + '.csv'
+        filename = singleslopePath + fname+'slope_ransac' + '.csv'
         slopeDF.to_csv(filename, sep=',', header=True)
         print('Completed computing slopes')
 
@@ -260,12 +260,7 @@ def extractMultiSlopeFea(df_org,fname):
             
             #remove outliers due to sensor
             df = df_org[(df_org['data_date'] >= str(day) + ' ' + timeRg[0]) &
-                        (df_org['data_date'] < str(day) + '' + timeRg[1]) &
-                        (df_org['Fs2m'] < Fs2mRg[1]) & (df_org['Fs2m'] > Fs2mRg[0]) &
-                        (df_org['T0'] < tempRg[1]) & (df_org['T0'] > tempRg[0]) &
-                        (df_org['Sd'] < SdRg[1]) & (df_org['Sd'] > SdRg[0]) &
-                        (df_org['Wv'] < WvRg[1]) & (df_org['Wv'] > WvRg[0]) &
-                        (df_org['Wd'] < WdRg[1]) & (df_org['Wd'] > WdRg[0]) ]
+                        (df_org['data_date'] < str(day) + '' + timeRg[1])  ]
             # print('remove data date')
             df = df.drop(['data_date'], axis=1)
             # print('add columns')
@@ -277,10 +272,11 @@ def extractMultiSlopeFea(df_org,fname):
             if df.shape[0] >= 100:
                 # all strings currents
                 df_power = df.P
-                # feature data
+                # feature data:'Fs2m','Sd','Wd','Wv','T0']
                 df_fea = df.loc[:,['Fs2m','Sd','Wd','Wv','T0']].values
-                #df_fea = df.Fs2m
-                # features, currents
+                # feature data:'Fs2m','Sd','T0']
+                df_fea = df.loc[:,['Fs2m','Sd','T0']].values
+
                 try:
                     lm = linearModel(df_fea,
                                      df_power.values.reshape(-1, 1), 'ransac')
@@ -648,17 +644,17 @@ def cmpPowerLoss():
                 
         
     
-if __name__ == "__main__":
-    #get all nbq files
-    #main_old()
-    
-    #grad daily features 
+#if __name__ == "__main__":
+#    #get all nbq files
+#    #main_old()
+#    
+#    #grad daily features 
 #    flist = glob.glob(resPath+'*.csv')        
 #    for f in flist:
 #        nbqname = os.path.basename(f)
 #        nbqData = pd.read_csv(f, delimiter=',')
 #        nbqData = nbqData.fillna(method='ffill')
-#        #extractSlopeFea(nbqData,nbqname)
+#        extractSlopeFea(nbqData,nbqname)
 #        extractMultiSlopeFea(nbqData,nbqname)
 #    
     #align each nbq with cleaning event.
@@ -672,6 +668,6 @@ if __name__ == "__main__":
     #main()
     
     #analyzing slopes' variation
-    cmpCleanBeforeAndAfter(slopePath=MultiSlopePath)
+   # cmpCleanBeforeAndAfter(slopePath=MultiSlopePath)
     
     #cmpPowerLoss()

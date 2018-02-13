@@ -56,8 +56,8 @@ def preProcessData(inPath,outPath):
                         (df_org['I2m'] < I2mRg[1]) & (df_org['I2m'] > I2mRg[0]) &
                         (df_org['V1m'] < V1mRg[1]) & (df_org['V1m'] > V1mRg[0]) &
                         (df_org['T0'] < tempRg[1]) & (df_org['T0'] > tempRg[0]) &
-                        (df_org['Wd'] < WdRg[1]) & (df_org['Wd'] > WdRg[0]) &
-                        (df_org['Wv'] < WvRg[1]) & (df_org['Wv'] > WvRg[0]) &
+#                        (df_org['Wd'] < WdRg[1]) & (df_org['Wd'] > WdRg[0]) &
+#                        (df_org['Wv'] < WvRg[1]) & (df_org['Wv'] > WvRg[0]) &
                         (df_org['Sd'] < SdRg[1]) & (df_org['Sd'] > SdRg[0]) &
                         (df_org['I'] < IRg[1]) & (df_org['I'] > IRg[0]) &
                         (df_org['V'] < VRg[1]) & (df_org['V'] > VRg[0])]
@@ -65,13 +65,13 @@ def preProcessData(inPath,outPath):
         # med filt using one hour data
         columns =['Fs2m','I1m','I2m','V1m','T0','Wd','Wv','Sd','I','V']
         tmpdf = df.copy()
-        print(tmpdf.iloc[0:smlen,:])
+        #print(tmpdf.iloc[0:smlen,:])
         df.loc[:,columns] = df.loc[:,columns].rolling(window=medfiltLen,center=True).median()
-        print(tmpdf.iloc[0:smlen,:])
+        #print(tmpdf.iloc[0:smlen,:])
         df.iloc[0:smlen,:] = tmpdf.iloc[0:smlen,:]
         df.iloc[-smlen:,:] = tmpdf.iloc[-smlen:,:]     
         
-        print(invertName+' has been processed sucessfully!')
+       # print(invertName+' has been processed sucessfully!')
         df.to_csv(outPath+invertName+'.csv',index = False)
         
 

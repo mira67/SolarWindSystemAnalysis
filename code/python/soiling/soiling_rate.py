@@ -33,7 +33,8 @@ MultiSlopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/multira
 nbqPath = '/Users/zhaoyingying/surfacesoiling/data/inverter/'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
-dustRatePath = '/Users/zhaoyingying/surfacesoiling/data/dustRate.csv'
+dustRatePath = '/Users/zhaoyingying/surfacesoiling/data/'
+singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/singleransac/'
 
 
 def DataClean(df):
@@ -154,12 +155,12 @@ def NewOptimalGPI(df):
 
     return slope  # gpi for each temp bucket
 
-def avgSoilingRate(df):
+def avgSoilingRate(df,nbqName):
     '''
     Avg soiling rate for Gpi
     '''
     clean = pd.read_csv(qxjl)
-    clean = clean[clean.nbqno == 'S01-NBA']
+    clean = clean[clean.nbqno == nbqName]
     cleanDates = clean['qxdate'].tolist()
     df = df.fillna(method='ffill')
     soilingDict = {}
@@ -266,12 +267,12 @@ def avgSoilingRateSd(df):
  
     return soilingDict
 
-def countdust():
+def countdust(inPath,method):
     '''
     count the median, mean, std of dust accumulation for each inverter
     '''
     
-    flist = glob.glob(MultiSlopePath+'*.csv')
+    flist = glob.glob(inPath+'*.csv')
     nbqList = []
     mdList = []
     mnList = []
@@ -282,7 +283,7 @@ def countdust():
         nbqname = os.path.basename(f)[0:7]
         print(nbqname)
         nbq_df = pd.read_csv(f)
-        md,mn,std = avgSoilingRate(nbq_df)
+        md,mn,std = avgSoilingRate(nbq_df,nbqname)
         nbqList.append(  nbqname)
         mdList.append(md)
         mnList.append( mn)
@@ -292,7 +293,7 @@ def countdust():
     soiling_df['dustMedian'] = mdList
     soiling_df['dustMean'] = mnList
     soiling_df['dustStd'] = stdLsit
-    soiling_df.to_csv(dustRatePath)
+    soiling_df.to_csv(dustRatePath+method+'dustRate.csv')
     
     #plot
     plt.plot(soiling_df.dustMedian, label='Median of Dust Accumulation Rate')
@@ -301,7 +302,7 @@ def countdust():
     plt.xlabel('No. of Inverters')
     plt.ylabel('Value')
     plt.legend()
-    plt.savefig(figPath + 'spatialVarDust.png', dpi=300)
+    plt.savefig(figPath + method+'spatialVarDust.png', dpi=300)
     plt.show()
     plt.close()
     
@@ -313,5 +314,6 @@ if __name__ == "__main__":
 #    nbqData = pd.read_csv(nbqPath + 'S01-NBA.csv')
 #    nbqData['P'] = nbqData['I'] * nbqData['V']
 #    optGPI = NewOptimalGPI(nbqData)
+    method= 'single'
     
-    countdust()
+    countdust(singleslopePath,method)
