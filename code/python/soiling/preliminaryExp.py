@@ -21,11 +21,13 @@ import matplotlib.cm as cm
 
 
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
+qxzclean = '/Users/zhaoyingying/surfacesoiling/data/qxzclean.csv'
 allnbqData = '/Users/zhaoyingying/surfacesoiling/data/Inv_GPI_pingyuan.csv'
 qxz = '/Users/zhaoyingying/surfacesoiling/data/pingyuan_weather_station2016.csv'
 qxz_nqb = '/Users/zhaoyingying/surfacesoiling/data/qxz_nqb.csv'
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 cleanlistPath = '/Users/zhaoyingying/surfacesoiling/data/cleaninglist.csv'
+wscleanlistPath = '/Users/zhaoyingying/surfacesoiling/data/wscleaninglist.csv'
 
 startDTModel = '2016-01-01'
 endDTModel = '2017-01-01'
@@ -231,11 +233,14 @@ def boxplot(field):
     df = df_org[(df_org['data_date'] >= str(dateList[0]) + ' ' + timeRg[0]) &
                         (df_org['data_date'] < str(dateList[-1]) + '' + timeRg[1])]
     
-    df = df.loc[:,['data_date','Fs2m','T0','Sd']]
+    df = df.loc[:,['data_date','Fs2m','T0','Sd','Wv','Wd','I1m','V1m','I2m']]
     
     #monthly
     datelist = [item[0:7] for item in df['data_date'].values]
     df['Date']= datelist
+    df['P_cln'] = df['I1m']*df['V1m']
+    df['P_syn'] = df['I2m']*df['V1m']
+    
     del df['data_date']
     
     new_df = df.pivot(columns='Date', values=field)
@@ -246,10 +251,17 @@ def boxplot(field):
     plt.xticks(rotation=30)
     #plt.ylabel('Humidity')
     #plt.ylabel('Ambient Temperature (℃)')
-    plt.ylabel('Solar Radiation (W/m^2)')
+    #plt.ylabel('Solar Radiation (W/m^2)')
+    #plt.ylabel('Wind Speed (m/s)')
+    #plt.ylabel('Wind Direction')
+    plt.ylabel('Power of Synchronized PV Panel')
     plt.subplots_adjust(left=0.18, wspace=0.25, hspace=0.25,bottom=0.20, top=0.91)
 
-    plt.savefig(figPath + 'Fs2mMonthlyVar.png', dpi=300)
+    #plt.savefig(figPath + 'Fs2mMonthlyVar.png', dpi=300)
+   # plt.savefig(figPath + 'WdMonthlyVar.png', dpi=300)
+    plt.ylim((0,400))
+    plt.savefig(figPath + 'PsynMonthlyVar.png', dpi=300)
+    
     plt.show()
 
 def cleaninglist(outPath):
@@ -284,10 +296,14 @@ def cleaninglist(outPath):
             
             #get end index
             endIDX = df[df.Date == riqi].index.tolist()[0]
-            dustacclist = range(0, endIDX-startIDX+1)
             
-            
-            df.loc[startIDX:endIDX,nbqname] = dustacclist 
+            if (endIDX -startIDX) < 50: #set experience value, 
+                dustacclist = range(0, endIDX-startIDX+1)
+                df.loc[startIDX:endIDX,nbqname] = dustacclist 
+            else:  # it is impossible that the dust accumulation interval is larger than 50 days. in pingyuan site
+                dustacclist = [0]*( endIDX-startIDX+1)
+                df.loc[startIDX:endIDX,nbqname] = dustacclist         
+                
             #next cleaning event
             startIDX = endIDX
             #startDate = riqi
@@ -299,7 +315,55 @@ def cleaninglist(outPath):
         df.loc[startIDX:endIDX,nbqname] = dustacclist       
     df.to_csv(outPath)
 
+def wscleaninglist(outPath):
+    '''
+    get cleaning list for weather station
+    the number day of dust accumulation
+    
+    '''
+    #get date list
+    dayList = tool.getDayList()
+    
+    #get cleaning list for each inverter
+    nbqList = ['syn']
+    nbqname = 'syn'
+    
+    df = pd.DataFrame(columns=nbqList)
+    df['Date'] = dayList
+    
+
+        #get cleaning record
+    nbq_qx = pd.read_csv(qxzclean)
+     
         
+        #get cleaning list for the invert
+    cleaningList = [item[0:10] for item in nbq_qx['CleanDate'].values]
+        
+        
+    startIDX = 0
+        #calculate the number of dust accumulation
+    for jdx, riqi in enumerate(cleaningList):
+            
+            #get end index
+        endIDX = df[df.Date == riqi].index.tolist()[0]
+            
+        if (endIDX -startIDX) < 50: #set experience value, 
+            dustacclist = range(0, endIDX-startIDX+1)
+            df.loc[startIDX:endIDX,nbqname] = dustacclist 
+        else:  # it is impossible that the dust accumulation interval is larger than 50 days. in pingyuan site
+            dustacclist = [0]*( endIDX-startIDX+1)
+            df.loc[startIDX:endIDX,nbqname] = dustacclist         
+                
+            #next cleaning event
+        startIDX = endIDX
+            #startDate = riqi
+        
+        
+        #for the last cleaning record
+    endIDX = len(dayList)-1
+    dustacclist = range(0, endIDX-startIDX+1)
+    df.loc[startIDX:endIDX,nbqname] = dustacclist       
+    df.to_csv(outPath)        
     
 if __name__ == "__main__":
     
@@ -316,9 +380,13 @@ if __name__ == "__main__":
     #windRose()
     
    # boxplot(field = 'Fs2m')
+   #boxplot(field = 'Wd')
+   #boxplot(field = 'P_cln')
+   #boxplot(field = 'P_syn')
    
    #get cleaning list for each inverter
-   cleaninglist(cleanlistPath)
+   #cleaninglist(cleanlistPath)
+   wscleaninglist(wscleanlistPath)
     
 
     

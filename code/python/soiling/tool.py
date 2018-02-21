@@ -54,12 +54,16 @@ def getnbqFile(filePath, nbqName):
     print('find the file sucessfully:')
     return f
 def removeOutliers(a, outlierConstant):
+    print('start ')
+    print(a)
     
     
     upper_quartile = np.nanpercentile(a, 75)
+    print(upper_quartile)
     lower_quartile = np.nanpercentile(a, 25)
     
     IQR = (upper_quartile - lower_quartile) * outlierConstant
+    print(IQR)
     quartileSet = (lower_quartile - IQR, upper_quartile + IQR)
     resultList = []
     
@@ -71,7 +75,26 @@ def removeOutliers(a, outlierConstant):
             resultList.append(np.nanmedian(a))
     print('has removed outliers')
     return resultList, upper_quartile
-
+def removeOutliers_raw(a, outlierConstant):
+    print('start ')
+    
+    upper_quartile = np.percentile(a, 75)
+    print(upper_quartile)
+    lower_quartile = np.percentile(a, 25)
+    
+    IQR = (upper_quartile - lower_quartile) * outlierConstant
+    print(IQR)
+    quartileSet = (lower_quartile - IQR, upper_quartile + IQR)
+    resultList = []
+    
+    
+    for y in a.tolist():
+        if y >= quartileSet[0] and y <= quartileSet[1]:
+            resultList.append(y)
+        else:
+            resultList.append(np.median(a))
+    print('has removed outliers')
+    return resultList, upper_quartile
 def nbqPlot(df, title):
     # correlation matrix
     scatter_matrix(df, alpha=0.2, figsize=(6, 6), diagonal='kde')

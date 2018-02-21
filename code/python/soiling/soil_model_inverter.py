@@ -55,6 +55,7 @@ MultiSlopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/multira
 figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
 powerPath = '/Users/zhaoyingying/surfacesoiling/data/results/'
+wsSlopePath ='/Users/zhaoyingying/surfacesoiling/data/inverter/slope/weatherstation/'
 
 
 """
@@ -234,6 +235,13 @@ def extractSlopeFea(df_org,fname):
         # obtain dataframe and record to file
         slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr'])
         slopeDF['data_date'] = pd.DataFrame(data=dayList)
+        
+        #remove outliers in pr and filter i
+        med_slope, upper = tool.removeOutliers(slopeDF.Pr, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['Pr'] = y1
+        
+        
         filename = singleslopePath + fname+'slope_ransac' + '.csv'
         slopeDF.to_csv(filename, sep=',', header=True)
         print('Completed computing slopes')
@@ -250,8 +258,8 @@ def extractMultiSlopeFea(df_org,fname):
     '''
     # grab daily slopes -> upgrade code to spark later for multiple columns computing in parallel
     # create an array to store slopes for each strings
-    features = 3 # solar radiation, temperature, humidity
-    #features = 5 # solar radiation, temp, humidity, wind speed , and wind direction
+    #features = 3 # solar radiation, temperature, humidity
+    features = 5 # solar radiation, temp, humidity, wind speed , and wind direction
     
     numDays = len(dayList)
     print('there are '+str(numDays)+' days in total.')
@@ -277,10 +285,10 @@ def extractMultiSlopeFea(df_org,fname):
                 df_power = df.P
                 
                 # feature data:'Fs2m','Sd','Wd','Wv','T0']
-                #df_fea = df.loc[:,['Fs2m','Sd','Wd','Wv','T0']].values
+                df_fea = df.loc[:,['Fs2m','Sd','Wd','Wv','T0']].values
                 
                 # feature data:'Fs2m','Sd','T0']
-                df_fea = df.loc[:,['Fs2m','Sd','T0']].values
+                #df_fea = df.loc[:,['Fs2m','Sd','T0']].values
 
                 try:
                     lm = linearModel(df_fea,
@@ -295,9 +303,27 @@ def extractMultiSlopeFea(df_org,fname):
                     print('regression fail')
 
         # obtain dataframe and record to file
-        #slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrWd','PrWv','PrT0'])
-        slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrT0'])
+        slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrWd','PrWv','PrT0'])
+        #slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr','PrSd','PrT0'])
         slopeDF['data_date'] = pd.DataFrame(data=dayList)
+        #remove outliers in pr and filter i               
+        med_slope, upper = tool.removeOutliers(slopeDF.Pr, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['Pr'] = y1
+        med_slope, upper = tool.removeOutliers(slopeDF.PrSd, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['PrSd'] = y1
+        med_slope, upper = tool.removeOutliers(slopeDF.PrT0, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['PrT0'] = y1
+        med_slope, upper = tool.removeOutliers(slopeDF.PrWv, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['PrWv'] = y1
+        med_slope, upper = tool.removeOutliers(slopeDF.PrWd, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['PrWd'] = y1
+        
+        
         filename = MultiSlopePath + fname+'slope_ransac' + '.csv'
         slopeDF.to_csv(filename, sep=',', header=True)
         print('Completed computing slopes')
@@ -361,7 +387,7 @@ def alignClean(filePath,nbqname):
     # add clean record
     n_clean = [1.0] * nbq_qx.index.shape[0]
 
-    plt.plot(nbq_qx.index, n_clean, 'x', label='Clean Event')
+    plt.plot(nbq_qx.index, n_clean, 'x', label='Cleaning Event')
     plt.legend()
     plt.show()
     
@@ -429,10 +455,7 @@ def main():
     # plt.plot(nbqSample['R'])
     # plt.show()
     # nbqPlot(nbqSample, 'inverter')
-def getnbqList():
-    hlx_info = pd.read_csv('/Users/zhaoyingying/surfacesoiling/data/hlxinfo.csv')
-    nbqList = hlx_info['nbqno'].unique().tolist()
-    return nbqList
+
 
 
 def cmpCleanBeforeAndAfter(slopePath):
@@ -441,7 +464,7 @@ def cmpCleanBeforeAndAfter(slopePath):
 
     '''
     #get nbq list
-    nbqList = getnbqList()
+    nbqList = tool.getnbqList()
     for idx,item in enumerate(nbqList):
         #creating slopes after each cleaning
         pr = {}
@@ -565,7 +588,7 @@ def cmpPowerLoss():
 
     '''
     #get nbq list
-    nbqList = getnbqList()
+    nbqList = tool.getnbqList()
     mean_list = np.zeros((invertnum, 1))
     var_list = np.zeros((invertnum, 1))
     for idx,item in enumerate(nbqList):
@@ -648,7 +671,66 @@ def cmpPowerLoss():
      
 
                 
+def extractWSSlopeFea(df_org,field):
+    '''
+    Grab daily slopes for weather station data and put in dataframe and save to csv files
+    field = P_cln, P_syn
+    '''
+    # grab daily slopes -> upgrade code to spark later for multiple columns computing in parallel
+    # create an array to store slopes for each strings
+    numDays = len(dayList)
+    print('there are '+str(numDays)+' days in total.')
+    slopeArray = np.zeros((numDays, 1))
+    try:
+        for idx, day in enumerate(dateList):
+            # query data
+            print(day)
+            df = df_org[(df_org['data_date'] >= str(day) + ' ' + timeRg[0]) &
+                        (df_org['data_date'] < str(day) + '' + timeRg[1])]
+            # print('remove data date')
+            df = df.drop(['data_date'], axis=1)
+            # print('add columns')
+            df['P_cln'] = df['I1m'] * df['V1m']
+            df['P_syn'] = df['I2m'] * df['V1m']
+
+            print('computing...', df.shape)
+            if df.shape[0] >= 100:
+               # all strings currents
+                df_power = df[field]
+                # feature data
+                df_fea = df.Fs2m
+                # features, currents
+                try:
+                    lm = linearModel(df_fea.values.reshape(-1, 1),
+                                     df_power.values.reshape(-1, 1), 'ransac')
+                    #estimated value
+                    slope = lm.estimator_.coef_[0]  # lm.coef_[0]#extract slopes
+                    # put in array
+                    slopeArray[idx] = slope
+                except:
+                    # use the prev one, or assign zeros
+                    slopeArray[idx] = slopeArray[idx - 1]
+                    print('regression fail')
+
+        # obtain dataframe and record to file
+        slopeDF = pd.DataFrame(data=slopeArray, columns=['Pr'])
+        slopeDF['data_date'] = pd.DataFrame(data=dayList)
         
+        #remove outliers in pr and filter i
+        med_slope, upper = tool.removeOutliers(slopeDF.Pr, 1)
+        y1 = medfilt(med_slope, 7)
+        slopeDF['Pr'] = y1
+        
+        
+        filename = wsSlopePath + field+'slope_ransac' + '.csv'
+        slopeDF.to_csv(filename, sep=',', header=True)
+        print('Completed computing slopes')
+
+    except Exception as e:
+        print('Exception: ', e)
+        print('Not able to process')
+
+    return '2018'        
     
 #if __name__ == "__main__":
 #    #get all nbq files

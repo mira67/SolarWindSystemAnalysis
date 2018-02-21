@@ -35,6 +35,7 @@ figPath = '/Users/zhaoyingying/surfacesoiling/data/fig/'
 qxjl = '/Users/zhaoyingying/surfacesoiling/data/qxjl.csv'
 dustRatePath = '/Users/zhaoyingying/surfacesoiling/data/'
 singleslopePath = '/Users/zhaoyingying/surfacesoiling/data/inverter/slope/singleransac/'
+qxzclean = '/Users/zhaoyingying/surfacesoiling/data/qxzclean.csv'
 
 
 def DataClean(df):
@@ -210,6 +211,7 @@ def avgSoilingRate(df,nbqName):
 
  
     #return soilingDict
+    print(gpi)
     return median(gpi), np.mean(gpi),np.var(gpi)
 
 def avgSoilingRateSd(df):
@@ -283,7 +285,12 @@ def countdust(inPath,method):
         nbqname = os.path.basename(f)[0:7]
         print(nbqname)
         nbq_df = pd.read_csv(f)
-        md,mn,std = avgSoilingRate(nbq_df,nbqname)
+        if method == 'ws':
+            print('start getting gpi')
+            md,mn,std = avgWSSoilingRate(nbq_df)
+        else:
+            md,mn,std = avgSoilingRate(nbq_df,nbqname)
+        print(std)
         nbqList.append(  nbqname)
         mdList.append(md)
         mnList.append( mn)
@@ -300,20 +307,83 @@ def countdust(inPath,method):
     plt.plot(soiling_df.dustMean, label='Mean of Dust Accumulation Rate')
     plt.plot(soiling_df.dustStd, label='Var of Dust Accumulation Rate')
     plt.xlabel('No. of Inverters')
-    plt.ylabel('Value')
+    plt.ylabel('Dust Accumulation Rate')
     plt.legend()
+    plt.subplots_adjust(left=0.18, wspace=0.25, hspace=0.25,bottom=0.20, top=0.91)
     plt.savefig(figPath + method+'spatialVarDust.png', dpi=300)
     plt.show()
     plt.close()
     
+def avgWSSoilingRate(df):
+    '''
+    Avg soiling rate for weather satation
+    '''
+    clean = pd.read_csv(qxzclean)
+   
+    dateList = [item[0:10] for item in clean['CleanDate'].values]
+
+    clean['CleanDate'] = dateList
+    
+    cleanDates = clean['CleanDate'].tolist()
     
     
-if __name__ == "__main__":
-    # lignClean()
-    #get optimal GPI
-#    nbqData = pd.read_csv(nbqPath + 'S01-NBA.csv')
-#    nbqData['P'] = nbqData['I'] * nbqData['V']
-#    optGPI = NewOptimalGPI(nbqData)
+    df = df.fillna(method='ffill')
+    soilingDict = {}
+    gpi = []
     
-    method= 'single'  
-    countdust(singleslopePath,method)
+    df['slope'] = df.Pr
+    #just plot onve cleaning event
+    i=0
+    for idx, dt in enumerate(cleanDates[:-1]):
+        #obtain a cleaning interval
+        data = df[df.data_date > dt]
+        data = data[data.data_date < cleanDates[idx + 1]]
+        rgDate = [dt, cleanDates[idx + 1]]
+        
+        soilingDict[str(rgDate)] = data.slope.tolist()
+        ndays = len(data.slope.tolist())
+        dn = np.arange(ndays)
+        plt.figure(1)
+        
+
+        if ndays > 1:
+            # regression
+            lm, slope = linearModel(dn.reshape(-1, 1),
+                                    data.slope.values.reshape(-1, 1), 'theil')
+            if slope < 0: # for dust accumulation case
+                gpi.append(slope)
+                #gpi.append(slope * 100)
+                # plot
+#                i = i+1
+#                if i==2:
+                plt.plot(dn, data.slope, '.', label=str(rgDate))
+                p_pred = lm.predict(dn.reshape(-1, 1))
+                plt.plot(dn, p_pred, linewidth=2, label=str(rgDate) + 'regression')
+                    
+   
+    
+    plt.xlabel('# of Days after Cleaning Event')
+    plt.ylabel('Slope')
+    plt.savefig(figPath + 'wsGPITrendaftercleaning.png', dpi=300)
+    plt.figure(2)
+    plt.hist(gpi, label='Distribution of Soiling Rates', bins=20)
+    plt.xlabel('Soiling Rate (%)/ Day')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.savefig(figPath + 'wsDistributionSoilingrate.png', dpi=300)
+    plt.show()
+    print(median(gpi), np.mean(gpi),np.std(gpi),gpi)
+
+ 
+    #return soilingDict
+    print(gpi)
+    return median(gpi), np.mean(gpi),np.var(gpi)    
+#if __name__ == "__main__":
+#    # lignClean()
+#    #get optimal GPI
+##    nbqData = pd.read_csv(nbqPath + 'S01-NBA.csv')
+##    nbqData['P'] = nbqData['I'] * nbqData['V']
+##    optGPI = NewOptimalGPI(nbqData)
+#    
+#    method= 'single'  
+#    countdust(singleslopePath,method)
